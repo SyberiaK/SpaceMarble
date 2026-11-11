@@ -4,59 +4,57 @@
  * @since 0.43.2
  */
 export default class Observers {
+    /** The constructor for the observer class
+     * @since 0.43.2
+     */
+    constructor() {
+        this.observerBody = null;
+        this.observerBodyTarget = null;
+        this.targetDisplayCoords = '#bm-display-coords';
+    }
 
-  /** The constructor for the observer class
-   * @since 0.43.2
-   */
-  constructor() {
-    this.observerBody = null;
-    this.observerBodyTarget = null;
-    this.targetDisplayCoords = '#bm-display-coords';
-  }
+    /** Creates the MutationObserver for document.body
+     * @param {HTMLElement} target - Targeted element to watch
+     * @returns {Observers} this (Observers class)
+     * @since 0.43.2
+     */
+    createObserverBody(target) {
+        this.observerBodyTarget = target;
 
-  /** Creates the MutationObserver for document.body
-   * @param {HTMLElement} target - Targeted element to watch
-   * @returns {Observers} this (Observers class)
-   * @since 0.43.2
-   */
-  createObserverBody(target) {
+        this.observerBody = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (!(node instanceof HTMLElement)) {
+                        continue;
+                    } // Does not track non-HTMLElements
 
-    this.observerBodyTarget = target;
+                    if (node.matches?.(this.targetDisplayCoords)) {
+                    }
+                }
+            }
+        });
 
-    this.observerBody = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
+        return this;
+    }
 
-          if (!(node instanceof HTMLElement)) {continue;} // Does not track non-HTMLElements
-          
-          if (node.matches?.(this.targetDisplayCoords)) {
+    /** Retrieves the MutationObserver that watches document.body
+     * @returns {MutationObserver}
+     * @since 0.43.2
+     */
+    getObserverBody() {
+        return this.observerBody;
+    }
 
-          }
-        }
-      }
-    })
-
-    return this;
-  }
-
-  /** Retrieves the MutationObserver that watches document.body
-   * @returns {MutationObserver}
-   * @since 0.43.2
-   */
-  getObserverBody() {
-    return this.observerBody;
-  }
-
-  /** Observe a MutationObserver
-   * @param {MutationObserver} observer - The MutationObserver
-   * @param {boolean} watchChildList - (Optional) Should childList be watched? False by default
-   * @param {boolean} watchSubtree - (Optional) Should childList be watched? False by default
-   * @since 0.43.2
-   */
-  observe(observer, watchChildList=false, watchSubtree=false) {
-    observer.observe(this.observerBodyTarget, {
-      childList: watchChildList,
-      subtree: watchSubtree
-    });
-  }
+    /** Observe a MutationObserver
+     * @param {MutationObserver} observer - The MutationObserver
+     * @param {boolean} watchChildList - (Optional) Should childList be watched? False by default
+     * @param {boolean} watchSubtree - (Optional) Should childList be watched? False by default
+     * @since 0.43.2
+     */
+    observe(observer, watchChildList = false, watchSubtree = false) {
+        observer.observe(this.observerBodyTarget, {
+            childList: watchChildList,
+            subtree: watchSubtree,
+        });
+    }
 }

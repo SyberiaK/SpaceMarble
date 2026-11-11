@@ -6,7 +6,7 @@
  * 4. Compress & obfuscate the bundled JS file (terner)
  * 5. Runs the CSS selector mangler (cssMandler.js)
  * @since 0.0.6
-*/
+ */
 
 // ES Module imports
 import esbuild from 'esbuild';
@@ -38,69 +38,76 @@ console.log(`${consoleStyle.BLUE}Starting build...${consoleStyle.RESET}`);
 
 // Tries to bump the version
 try {
-  const update = execSync('node build/update-version.js', { stdio: 'inherit' });
-  console.log(`Version updated in meta file ${consoleStyle.GREEN}successfully${consoleStyle.RESET}`);
+    const update = execSync('node build/update-version.js', { stdio: 'inherit' });
+    console.log(
+        `Version updated in meta file ${consoleStyle.GREEN}successfully${consoleStyle.RESET}`,
+    );
 } catch (error) {
-  console.error(`${consoleStyle.RED + consoleStyle.BOLD}Failed to update version number${consoleStyle.RESET}:`, error);
-  process.exit(1);
+    console.error(
+        `${consoleStyle.RED + consoleStyle.BOLD}Failed to update version number${consoleStyle.RESET}:`,
+        error,
+    );
+    process.exit(1);
 }
 
 // Fetches the userscript metadata banner
 const metaContent = fs.readFileSync('src/SkirkMarble.meta.js', 'utf8');
 
 // Compiles a string array of all CSS files
-const cssFiles = fs.readdirSync('src/')
-  .filter(file => file.endsWith('.css'))
-  .map(file => `src/${file}`);
+const cssFiles = fs
+    .readdirSync('src/')
+    .filter((file) => file.endsWith('.css'))
+    .map((file) => `src/${file}`);
 
 // Compiles the CSS files
 esbuild.build({
-  entryPoints: cssFiles,
-  bundle: true,
-  outfile: 'dist/SkirkMarble.user.css',
-  minify: true
+    entryPoints: cssFiles,
+    bundle: true,
+    outfile: 'dist/SkirkMarble.user.css',
+    minify: true,
 });
 
 // Compiles the JS files
-const resultEsbuild = await esbuild.build({
-  entryPoints: ['src/main.js'], // "Infect" the files from this point (it spreads from this "patient 0")
-  bundle: true, // Should the code be bundled?
-  outfile: 'dist/SkirkMarble.user.js', // The file the bundled code is exported to
-  format: 'iife', // What format the bundler bundles the code into
-  target: 'es2020', // What is the minimum version/year that should be supported? When omited, it attempts to support backwards compatability with legacy browsers
-  platform: 'browser', // The platform the bundled code will be operating on
-  legalComments: 'inline', // What level of legal comments are preserved? (Hard: none, Soft: inline)
-  minify: false, // Should the code be minified?
-  write: false, // Should we write the outfile to the disk?
-  treeShaking: false, // Disable to preserve debug functions
-}).catch(() => process.exit(1));
+const resultEsbuild = await esbuild
+    .build({
+        entryPoints: ['src/main.js'], // "Infect" the files from this point (it spreads from this "patient 0")
+        bundle: true, // Should the code be bundled?
+        outfile: 'dist/SkirkMarble.user.js', // The file the bundled code is exported to
+        format: 'iife', // What format the bundler bundles the code into
+        target: 'es2020', // What is the minimum version/year that should be supported? When omited, it attempts to support backwards compatability with legacy browsers
+        platform: 'browser', // The platform the bundled code will be operating on
+        legalComments: 'inline', // What level of legal comments are preserved? (Hard: none, Soft: inline)
+        minify: false, // Should the code be minified?
+        write: false, // Should we write the outfile to the disk?
+        treeShaking: false, // Disable to preserve debug functions
+    })
+    .catch(() => process.exit(1));
 
 // Retrieves the JS file
-const resultEsbuildJS = resultEsbuild.outputFiles.find(file => file.path.endsWith('.js'));
-
+const resultEsbuildJS = resultEsbuild.outputFiles.find((file) => file.path.endsWith('.js'));
 
 // Obfuscates the JS file
 let resultTerser = await terser.minify(resultEsbuildJS.text, {
-  mangle: {
-    toplevel: false, // Don't obfuscate top-level class/function names
-    keep_classnames: false, // Should class names be preserved?
-    keep_fnames: false, // Should function names be preserved?
-    reserved: ['getDebugLoggingEnabled', 'saveDebugLoggingEnabled'], // Preserve debug settings functions
-    properties: {
-      // regex: /.*/, // Yes, I am aware I should be using a RegEx. Yes, like you, I am also suprised the userscript still functions
-      keep_quoted: true, // Should names in quotes be preserved?
-      reserved: [] // What properties should be preserved?
+    mangle: {
+        toplevel: false, // Don't obfuscate top-level class/function names
+        keep_classnames: false, // Should class names be preserved?
+        keep_fnames: false, // Should function names be preserved?
+        reserved: ['getDebugLoggingEnabled', 'saveDebugLoggingEnabled'], // Preserve debug settings functions
+        properties: {
+            // regex: /.*/, // Yes, I am aware I should be using a RegEx. Yes, like you, I am also suprised the userscript still functions
+            keep_quoted: true, // Should names in quotes be preserved?
+            reserved: [], // What properties should be preserved?
+        },
     },
-  },
-  format: {
-    comments: 'some' // Save legal comments
-  },
-  compress: {
-    dead_code: true, // Remove unused code
-    drop_console: false, // Keep console code for debug logging
-    drop_debugger: isGitHub, // SHould debugger code be removed?
-    passes: 2 // How many times terser will compress the code
-  }
+    format: {
+        comments: 'some', // Save legal comments
+    },
+    compress: {
+        dead_code: true, // Remove unused code
+        drop_console: false, // Keep console code for debug logging
+        drop_debugger: isGitHub, // SHould debugger code be removed?
+        passes: 2, // How many times terser will compress the code
+    },
 });
 
 // Writes the obfuscated/mangled JS code to a file
@@ -111,34 +118,38 @@ let importedMapCSS = {}; // The imported CSS map
 // Only import a CSS map if we are NOT in production (GitHub Workflow)
 // Theoretically, if the previous map is always imported, the names would not scramble. However, the names would never decrease in number...
 if (!isGitHub) {
-  try {
-    importedMapCSS = JSON.parse(fs.readFileSync('dist/SkirkMarble.user.css.map.json', 'utf8'));
-  } catch {
-    console.log(`${consoleStyle.YELLOW}Warning! Could not find a CSS map to import. A 100% new CSS map will be generated...${consoleStyle.RESET}`);
-  }
+    try {
+        importedMapCSS = JSON.parse(fs.readFileSync('dist/SkirkMarble.user.css.map.json', 'utf8'));
+    } catch {
+        console.log(
+            `${consoleStyle.YELLOW}Warning! Could not find a CSS map to import. A 100% new CSS map will be generated...${consoleStyle.RESET}`,
+        );
+    }
 }
 
 // Mangles the CSS selectors
 // If we are in production (GitHub Workflow), then generate the CSS mapping
 const mapCSS = mangleSelectors({
-  inputPrefix: 'bm-',
-  outputPrefix: 'bm-',
-  pathJS: 'dist/SkirkMarble.user.js',
-  pathCSS: 'dist/SkirkMarble.user.css',
-  importMap: importedMapCSS,
-  returnMap: true
+    inputPrefix: 'bm-',
+    outputPrefix: 'bm-',
+    pathJS: 'dist/SkirkMarble.user.js',
+    pathCSS: 'dist/SkirkMarble.user.css',
+    importMap: importedMapCSS,
+    returnMap: true,
 });
 
 // If a map was returned, write it to the file
 if (mapCSS) {
-  fs.writeFileSync('dist/SkirkMarble.user.css.map.json', JSON.stringify(mapCSS, null, 2));
+    fs.writeFileSync('dist/SkirkMarble.user.css.map.json', JSON.stringify(mapCSS, null, 2));
 }
 
 // Adds the banner
 fs.writeFileSync(
-  'dist/SkirkMarble.user.js', 
-  metaContent + fs.readFileSync('dist/SkirkMarble.user.js', 'utf8'), 
-  'utf8'
+    'dist/SkirkMarble.user.js',
+    metaContent + fs.readFileSync('dist/SkirkMarble.user.js', 'utf8'),
+    'utf8',
 );
 
-console.log(`${consoleStyle.GREEN + consoleStyle.BOLD + consoleStyle.UNDERLINE}Building complete!${consoleStyle.RESET}`);
+console.log(
+    `${consoleStyle.GREEN + consoleStyle.BOLD + consoleStyle.UNDERLINE}Building complete!${consoleStyle.RESET}`,
+);
