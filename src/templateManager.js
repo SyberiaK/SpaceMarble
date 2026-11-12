@@ -315,6 +315,16 @@ export default class TemplateManager {
         }
     }
 
+    #storeTimer = null;
+    #storeChain = Promise.resolve();
+
+    #scheduleStore() {
+        clearTimeout(this.#storeTimer);
+        this.#storeTimer = setTimeout(() => {
+            this.#storeChain = this.#storeChain.then(() => this.#storeTemplates()).catch((e) => console.error('Template storage failed:', e));
+        }, 500);
+    }
+
     /** Deletes a template from the JSON object.
      * Also delete's the corrosponding {@link Template} class instance
      * @param {string} templateKey - The key of the template to delete (e.g., "0 $Z")
@@ -1427,7 +1437,7 @@ export default class TemplateManager {
         this.templatesJSON.lastModified = new Date().toISOString();
 
         // Save to storage
-        this.#storeTemplates();
+        this.#scheduleStore();
 
         // CRITICAL FIX: Clear tile progress cache when template enabled state changes
         // This prevents disabled template data from leaking into progress calculations
@@ -1550,7 +1560,7 @@ export default class TemplateManager {
             }
 
             // Store updated settings
-            await this.#storeTemplates();
+            this.#scheduleStore();
 
             debugLog('Template color filter settings updated successfully');
         } catch (error) {
