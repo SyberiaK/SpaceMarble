@@ -200,7 +200,13 @@ export default class ApiManager {
                     const blobUUID = data['blobID'];
                     const blobData = data['blobData'];
 
-                    const templateBlob = await this.templateManager.drawTemplateOnTile(blobData, tileCoordsTile);
+                    let templateBlob;
+                    try {
+                        templateBlob = await this.templateManager.drawTemplateOnTile(blobData, tileCoordsTile);
+                    } catch (e) {
+                        console.error('Tile processing failed:', e);
+                        templateBlob = blobData;
+                    }
 
                     window.postMessage({
                         source: 'blue-marble',
