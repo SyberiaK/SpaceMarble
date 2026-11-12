@@ -167,7 +167,7 @@ inject(() => {
         }
 
         // Check Content-Type to only process JSON
-        const contentType = cloned.headers.get('content-type') || '';
+        const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
             // Since this code does not run in the userscript, we can't use debugLog().
             // console.log(`%c${name}%c: Sending JSON message about endpoint "${endpointName}"`, consoleStyle, '');
@@ -211,9 +211,9 @@ inject(() => {
                     // Creates a new response
                     resolve(
                         new Response(blobProcessed, {
-                            headers: cloned.headers,
-                            status: cloned.status,
-                            statusText: cloned.statusText,
+                            headers: response.headers,
+                            status: response.status,
+                            statusText: response.statusText,
                         }),
                     );
 
