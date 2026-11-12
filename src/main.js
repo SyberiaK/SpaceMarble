@@ -4250,8 +4250,8 @@ function buildOverlayMain() {
         .addDiv({ id: 'bm-title-container' })
         .addImg(
             {
-                alt: 'Blue Marble Icon - Click to minimize/maximize',
-                src: 'https://raw.githubusercontent.com/Seris0/Wplace-SkirkMarble/main/dist/assets/Favicon.png',
+                alt: 'SpaceMarble Icon - Click to minimize/maximize',
+                src: 'https://raw.githubusercontent.com/SyberiaK/SpaceMarble/main/dist/assets/Favicon.png',
                 style: 'cursor: pointer; width: 42px; height: 42px;',
             },
             (instance, img) => {
@@ -13897,7 +13897,7 @@ function createSearchWindow() {
 <div class="drag-handle"></div>
 <div class="hdr">
   <h3>
-    <img class="skirk-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-SkirkMarble/main/dist/assets/Favicon.png" alt="Blue Marble" style="width:42px;height:42px;">
+    <img class="skirk-icon" src="https://raw.githubusercontent.com/SyberiaK/SpaceMarble/main/dist/assets/Favicon.png" alt="SpaceMarble" style="width:42px;height:42px;">
     Location Search
   </h3>
   <div class="actions">

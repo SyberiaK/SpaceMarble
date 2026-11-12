@@ -11,10 +11,10 @@ console.log(`${consoleStyle.BLUE}Starting update-version...${consoleStyle.RESET}
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
 const version = pkg.version;
 
-let meta = fs.readFileSync('src/SkirkMarble.meta.js', 'utf-8');
+let meta = fs.readFileSync('src/SpaceMarble.meta.js', 'utf-8');
 meta = meta.replace(/@version\s+[\d.]+/, `@version      ${version}`);
 
-fs.writeFileSync('src/SkirkMarble.meta.js', meta);
+fs.writeFileSync('src/SpaceMarble.meta.js', meta);
 console.log(
     `${consoleStyle.GREEN}Updated${consoleStyle.RESET} userscript version to ${consoleStyle.MAGENTA}${version}${consoleStyle.RESET}`,
 );

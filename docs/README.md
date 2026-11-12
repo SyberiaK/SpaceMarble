@@ -1,7 +1,9 @@
-# Skirk Cuz I like her XD
-<img width="1469" height="810" alt="SkirkFinished" src="https://github.com/user-attachments/assets/e1a19e25-3dbf-44f0-92b1-7ac59fdf3857" />
+# SpaceMarble
 
+A versatile template overlay for wplace.live.
+It's literally SkirkMarble, but I asked Claude and applied some performance improvements so it doesn't hang up the tab and lag on huge templates (hopefully).
 
-# I will not be accepting any kind of pull requests neither open issues. This is a project I made for fun with my personal friends in my alliance. I only left the repository public just cuz yes, so if anyone wants changes, please maintain them in your own forks. Hope you all understand, Sorry!!
-
-
+> [!WARNING]
+> This fork was primarily made for personal use, so I can't guarantee any maintenance or support.
+> If you have any issues, consider using a different extension.
+> If you have a pull request to submit, I _might_ consider reviewing it, but be prepared to keep your own fork.

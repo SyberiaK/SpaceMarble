@@ -1,20 +1,21 @@
 {
-  "name": "wplace-skirkmarble",
-  "version": "1.0.0",
-  "author": "Seris0",
-  "contributors": [
-    "Hao-1337",
-    "pixelkat5"
-  ],
-  "type": "module",
-  "scripts": {
-    "build": "node build/build.js",
-    "patch": "node build/patch.js && npm run build"
-  },
-  "devDependencies": {
-    "esbuild": "^0.25.0",
-    "jsdoc": "^4.0.4",
-    "minami": "^1.2.3",
-    "terser": "^5.43.1"
-  }
+    "name": "spacemarble",
+    "version": "1.0.1",
+    "author": "SyberiaK",
+    "contributors": [
+        "Seris0",
+        "Hao-1337",
+        "pixelkat5"
+    ],
+    "type": "module",
+    "scripts": {
+        "build": "node build/build.js",
+        "patch": "node build/patch.js && npm run build"
+    },
+    "devDependencies": {
+        "esbuild": "^0.25.12",
+        "jsdoc": "^4.0.4",
+        "minami": "^1.2.3",
+        "terser": "^5.43.1"
+    }
 }

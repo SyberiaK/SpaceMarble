@@ -51,7 +51,7 @@ try {
 }
 
 // Fetches the userscript metadata banner
-const metaContent = fs.readFileSync('src/SkirkMarble.meta.js', 'utf8');
+const metaContent = fs.readFileSync('src/SpaceMarble.meta.js', 'utf8');
 
 // Compiles a string array of all CSS files
 const cssFiles = fs
@@ -63,7 +63,7 @@ const cssFiles = fs
 esbuild.build({
     entryPoints: cssFiles,
     bundle: true,
-    outfile: 'dist/SkirkMarble.user.css',
+    outfile: 'dist/SpaceMarble.user.css',
     minify: true,
 });
 
@@ -72,7 +72,7 @@ const resultEsbuild = await esbuild
     .build({
         entryPoints: ['src/main.js'], // "Infect" the files from this point (it spreads from this "patient 0")
         bundle: true, // Should the code be bundled?
-        outfile: 'dist/SkirkMarble.user.js', // The file the bundled code is exported to
+        outfile: 'dist/SpaceMarble.user.js', // The file the bundled code is exported to
         format: 'iife', // What format the bundler bundles the code into
         target: 'es2020', // What is the minimum version/year that should be supported? When omited, it attempts to support backwards compatability with legacy browsers
         platform: 'browser', // The platform the bundled code will be operating on
@@ -111,7 +111,7 @@ let resultTerser = await terser.minify(resultEsbuildJS.text, {
 });
 
 // Writes the obfuscated/mangled JS code to a file
-fs.writeFileSync('dist/SkirkMarble.user.js', resultTerser.code, 'utf8');
+fs.writeFileSync('dist/SpaceMarble.user.js', resultTerser.code, 'utf8');
 
 let importedMapCSS = {}; // The imported CSS map
 
@@ -119,7 +119,7 @@ let importedMapCSS = {}; // The imported CSS map
 // Theoretically, if the previous map is always imported, the names would not scramble. However, the names would never decrease in number...
 if (!isGitHub) {
     try {
-        importedMapCSS = JSON.parse(fs.readFileSync('dist/SkirkMarble.user.css.map.json', 'utf8'));
+        importedMapCSS = JSON.parse(fs.readFileSync('dist/SpaceMarble.user.css.map.json', 'utf8'));
     } catch {
         console.log(
             `${consoleStyle.YELLOW}Warning! Could not find a CSS map to import. A 100% new CSS map will be generated...${consoleStyle.RESET}`,
@@ -132,21 +132,21 @@ if (!isGitHub) {
 const mapCSS = mangleSelectors({
     inputPrefix: 'bm-',
     outputPrefix: 'bm-',
-    pathJS: 'dist/SkirkMarble.user.js',
-    pathCSS: 'dist/SkirkMarble.user.css',
+    pathJS: 'dist/SpaceMarble.user.js',
+    pathCSS: 'dist/SpaceMarble.user.css',
     importMap: importedMapCSS,
     returnMap: true,
 });
 
 // If a map was returned, write it to the file
 if (mapCSS) {
-    fs.writeFileSync('dist/SkirkMarble.user.css.map.json', JSON.stringify(mapCSS, null, 2));
+    fs.writeFileSync('dist/SpaceMarble.user.css.map.json', JSON.stringify(mapCSS, null, 2));
 }
 
 // Adds the banner
 fs.writeFileSync(
-    'dist/SkirkMarble.user.js',
-    metaContent + fs.readFileSync('dist/SkirkMarble.user.js', 'utf8'),
+    'dist/SpaceMarble.user.js',
+    metaContent + fs.readFileSync('dist/SpaceMarble.user.js', 'utf8'),
     'utf8',
 );
 
