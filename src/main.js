@@ -195,20 +195,23 @@ inject(() => {
 
             const blink = Date.now(); // Current time
 
-            const blob = await response.blob(); // The original blob
+            const blob = await response.blob();
+            const passthrough = () =>
+                new Response(blob, {
+                    headers: response.headers,
+                    status: response.status,
+                    statusText: response.statusText,
+                });
 
-            // Since this code does not run in the userscript, we can't use debugLog().
-            // console.log(`%c${name}%c: ${fetchedBlobQueue.size} Sending IMAGE message about endpoint "${endpointName}"`, consoleStyle, '');
-
-            // Returns the manipulated blob
             return new Promise((resolve) => {
-                const blobUUID = crypto.randomUUID(); // Generates a random UUID
+                const blobUUID = crypto.randomUUID();
+                const timer = setTimeout(() => {
+                    fetchedBlobQueue.delete(blobUUID);
+                    resolve(passthrough());
+                }, 15000);
 
-                // Store the blob while we wait for processing
                 fetchedBlobQueue.set(blobUUID, (blobProcessed) => {
-                    // The response that triggers when the blob is finished processing
-
-                    // Creates a new response
+                    clearTimeout(timer);
                     resolve(
                         new Response(blobProcessed, {
                             headers: response.headers,
@@ -216,9 +219,6 @@ inject(() => {
                             statusText: response.statusText,
                         }),
                     );
-
-                    // Since this code does not run in the userscript, we can't use debugLog().
-                    // debugLog(`%c${name}%c: ${fetchedBlobQueue.size} Processed blob "${blobUUID}"`, consoleStyle, '');
                 });
 
                 window.postMessage({
@@ -229,14 +229,6 @@ inject(() => {
                     blink: blink,
                 });
             });
-
-            // cloned.blob().then(blob => {
-            //   window.postMessage({
-            //     source: 'blue-marble',
-            //     endpoint: endpointName,
-            //     blobData: blob
-            //   }, '*');
-            // });
         }
 
         return response; // Returns the original response
