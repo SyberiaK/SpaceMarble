@@ -1379,8 +1379,10 @@ function observeBlack() {
         move.textContent = 'Move ↑';
         move.className = 'btn btn-soft';
         move.onclick = function () {
-            const roundedBox = this.parentNode?.parentNode?.parentNode?.parentNode;
-            if (!roundedBox?.parentNode) return;
+            const paintPixel =
+                black.closest('.paint-layout')?.querySelector('.paint-heading') ??
+                black.parentNode?.parentNode?.parentNode?.parentNode?.querySelector('h2');
+            if (!paintPixel?.parentNode) return;
             const shouldMoveUp = this.textContent == 'Move ↑';
             roundedBox.parentNode.className = roundedBox.parentNode.className.replace(
                 shouldMoveUp ? 'bottom' : 'top',
