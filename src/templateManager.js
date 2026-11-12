@@ -1,5 +1,5 @@
 import Template from './Template.js';
-import { base64ToUint8, uint8ToBase64, numberToEncoded, debugLog } from './utils.js';
+import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 
 /** Manages the template system.
@@ -2148,8 +2148,7 @@ export default class TemplateManager {
             return { colorStats: {}, totalAnalyzed: 0, totalPainted: 0, totalNeedCrosshair: 0 };
         }
 
-        const canvasImageData = ctx.getImageData(canvasX, canvasY, tileWidth, tileHeight);
-        const canvasData = canvasImageData.data;
+        const canvasData = ctx.getImageData(canvasX, canvasY, tileWidth, tileHeight).data;
 
         // STEP 1: Find enhanced template pixels (EXACT enhanced mode logic)
         const enhancedTemplatePixels = new Set();
@@ -3010,13 +3009,12 @@ export default class TemplateManager {
 
             // Get canvas data for comparison
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            const canvasImageData = ctx.getImageData(
+            const canvasData = ctx.getImageData(
                 templateOffset[0],
                 templateOffset[1],
                 templateBitmap.width,
                 templateBitmap.height,
-            );
-            const canvasData = canvasImageData.data;
+            ).data;
 
             let wrongPixelCount = 0;
 
