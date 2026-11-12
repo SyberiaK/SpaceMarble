@@ -6,17 +6,12 @@ import Overlay from './Overlay.js';
 import Observers from './observers.js';
 import ApiManager from './apiManager.js';
 import TemplateManager from './templateManager.js';
-import {
-    debugLog,
-    canvasPosToLatLng,
-    getDebugLoggingEnabled,
-    saveDebugLoggingEnabled,
-} from './utils.js';
+import { debugLog, canvasPosToLatLng, isDebugEnabled, saveDebugLoggingEnabled } from './utils.js';
 
 // Ensure debugLog is globally available to prevent ReferenceError - set it immediately
 if (typeof window !== 'undefined') {
     window.debugLog = debugLog;
-    window.getDebugLoggingEnabled = getDebugLoggingEnabled;
+    window.isDebugEnabled = isDebugEnabled;
 }
 import * as icons from './icons.js';
 import {
@@ -13735,7 +13730,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         // Get current debug setting (default off)
-        let tempDebugEnabled = getDebugLoggingEnabled();
+        let tempDebugEnabled = isDebugEnabled();
 
         const debugToggle = document.createElement('div');
         debugToggle.style.cssText = `

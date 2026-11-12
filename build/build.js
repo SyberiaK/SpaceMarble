@@ -92,7 +92,7 @@ let resultTerser = await terser.minify(resultEsbuildJS.text, {
         toplevel: false, // Don't obfuscate top-level class/function names
         keep_classnames: false, // Should class names be preserved?
         keep_fnames: false, // Should function names be preserved?
-        reserved: ['getDebugLoggingEnabled', 'saveDebugLoggingEnabled'], // Preserve debug settings functions
+        reserved: ['isDebugEnabled', 'saveDebugLoggingEnabled'], // Preserve debug settings functions
         properties: {
             // regex: /.*/, // Yes, I am aware I should be using a RegEx. Yes, like you, I am also suprised the userscript still functions
             keep_quoted: true, // Should names in quotes be preserved?

@@ -1,3 +1,5 @@
+let _debugEnabled = null;
+
 /** Sanitizes HTML to display as plain-text.
  * This prevents some Cross Site Scripting (XSS).
  * This is handy when you are displaying user-made data, and you *must* use innerHTML.
@@ -35,22 +37,20 @@ export function serverTPtoDisplayTP(tile, pixel) {
     ];
 }
 
-/** Negative-Safe Modulo. You can pass negative numbers into this.
- * @param {number} a - The first number
- * @param {number} b - The second number
- * @returns {number} Result
- * @author osuplace
- * @since 0.55.8
+/** Gets the debug logging enabled setting from cache (takes from storage at first call)
+ * @returns {boolean} Whether debug logging is enabled
+ * @since 1.0.0
  */
-export function negativeSafeModulo(a, b) {
-    return ((a % b) + b) % b;
+export function isDebugEnabled() {
+    if (_debugEnabled === null) _debugEnabled = getDebugLoggingEnabled();
+    return _debugEnabled;
 }
 
 /** Gets the debug logging enabled setting from storage
  * @returns {boolean} Whether debug logging is enabled
  * @since 1.0.0
  */
-export function getDebugLoggingEnabled() {
+function getDebugLoggingEnabled() {
     try {
         let debugEnabled = null;
 
@@ -98,7 +98,7 @@ export function saveDebugLoggingEnabled(enabled) {
  */
 export function debugLog(...args) {
     try {
-        if (getDebugLoggingEnabled()) {
+        if (isDebugEnabled()) {
             console.log(...args);
         }
     } catch (error) {
