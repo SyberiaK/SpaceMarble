@@ -504,6 +504,7 @@ export default class TemplateManager {
                     const coords = tile.split(','); // [x, y, x, y] Tile/pixel coordinates
 
                     return {
+                        owner: template,
                         bitmap: template.chunked[tile],
                         tileCoords: [coords[0], coords[1]],
                         pixelCoords: [coords[2], coords[3]],
@@ -597,7 +598,7 @@ export default class TemplateManager {
             debugLog(template);
 
             // Get the corresponding template instance to check for disabled colors
-            const currentTemplate = templateArray[i]; // Use the correct template from the array
+            const currentTemplate = template.owner; // Use the correct template from the array
             const hasDisabledColors =
                 currentTemplate && currentTemplate.getDisabledColors().length > 0;
 
