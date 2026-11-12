@@ -666,15 +666,11 @@ export default class TemplateManager {
 
                 // Create a copy for border detection if enhanced mode is enabled
                 const originalData = hasEnhancedColors ? new Uint8ClampedArray(data) : null;
-                const enhancedPixels = hasEnhancedColors ? new Set() : null;
+                const enhancedMask = hasEnhancedColors ? new Uint8Array(width * height) : null;
+                let enhancedCount = 0;
 
                 // Get the current canvas state (including painted pixels) for crosshair collision detection
                 let canvasData = null;
-                if (hasEnhancedColors) {
-                    const canvasImageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                    canvasData = canvasImageData.data;
-                }
-
                 // First pass: Apply color filtering to center pixels
                 if (hasDisabledColors) {
                     for (let y = 0; y < height; y++) {
@@ -704,7 +700,8 @@ export default class TemplateManager {
                                 currentTemplate.isColorEnhanced([r, g, b])
                             ) {
                                 // Track enhanced pixels for border detection
-                                enhancedPixels.add(`${x},${y}`);
+                                enhancedMask[y * width + x] = 1;
+                                enhancedCount++;
                             }
                         }
                     }
@@ -712,7 +709,6 @@ export default class TemplateManager {
                     // If only enhanced mode (no color filtering), identify enhanced template pixels
                     // IMPORTANT: Only process center pixels of 3x3 blocks (template pixels) to avoid affecting painted pixels
                     debugLog(`Scanning for enhanced template pixels...`);
-                    let enhancedPixelCount = 0;
 
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
@@ -731,26 +727,24 @@ export default class TemplateManager {
 
                                 // Check if this color should be enhanced (normal enhanced OR wrong colors enhanced)
                                 const isNormalEnhanced = currentTemplate.isColorEnhanced([r, g, b]);
-                                // For wrong colors enhancement, we'll detect wrong colors separately and add them to enhanced pixels
-                                const shouldBeEnhanced = isNormalEnhanced;
 
-                                if (shouldBeEnhanced) {
-                                    enhancedPixels.add(`${x},${y}`);
-                                    enhancedPixelCount++;
+                                if (isNormalEnhanced) {
+                                    enhancedMask[y * width + x] = 1;
+                                    enhancedCount++;
                                 }
                             }
                         }
                     }
 
-                    debugLog(`Found ${enhancedPixelCount} enhanced pixels`);
+                    debugLog(`Found ${enhancedCount} enhanced pixels`);
                 }
 
                 // Apply enhanced mode crosshair effects
-                if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
+                if (hasEnhancedColors && enhancedMask && enhancedCount > 0) {
                     // Enhanced mode with performance limits
-                    if (enhancedPixels.size > 700000) {
+                    if (enhancedCount > 700000) {
                         debugLog(
-                            `Skipping enhanced mode: ${enhancedPixels.size} pixels (performance limit)`,
+                            `Skipping enhanced mode: ${enhancedCount} pixels (performance limit)`,
                         );
                     } else {
                         let crosshairCenterCount = 0;
@@ -779,28 +773,38 @@ export default class TemplateManager {
                             debugLog('Could not get canvas region, using fallback mode');
                         }
 
+                        if (!canvasRegionData)
+                            canvasData = context.getImageData(
+                                0,
+                                0,
+                                canvas.width,
+                                canvas.height,
+                            ).data;
+
                         // Process enhanced pixels efficiently
-                        const enhancedPixelsArray = Array.from(enhancedPixels);
-                        const isLargeTemplate = enhancedPixelsArray.length > 25000;
-                        const chunkSize = isLargeTemplate ? 8000 : enhancedPixelsArray.length;
+                        const enhancedIdx = new Uint32Array(enhancedCount);
+                        for (let i = 0, k = 0; i < enhancedMask.length; i++)
+                            if (enhancedMask[i]) enhancedIdx[k++] = i;
+                        const isLargeTemplate = enhancedCount > 25000;
+                        const chunkSize = isLargeTemplate ? 8000 : enhancedCount;
 
                         // Track wrong color pixels
-                        const wrongColorPixels = new Set();
+                        const wrongMask = this.enhanceWrongColors
+                            ? new Uint8Array(width * height)
+                            : null;
                         let wrongColorCount = 0;
 
                         // Detect wrong color pixels
                         if (this.enhanceWrongColors) {
-                            if (enhancedPixelsArray.length > 15000) {
-                                debugLog(
-                                    `Scanning ${enhancedPixelsArray.length} pixels for wrong colors`,
-                                );
+                            if (enhancedIdx.length > 15000) {
+                                debugLog(`Scanning ${enhancedIdx.length} pixels for wrong colors`);
                             }
 
-                            for (const pixelCoord of enhancedPixelsArray) {
-                                const [px, py] = pixelCoord.split(',').map(Number);
-
-                                // Get template color at this position
-                                const templateIndex = (py * width + px) * 4;
+                            for (let k = 0; k < enhancedIdx.length; k++) {
+                                const idx = enhancedIdx[k];
+                                const px = idx % width,
+                                    py = (idx / width) | 0;
+                                const templateIndex = idx * 4;
                                 const templateR = originalData[templateIndex];
                                 const templateG = originalData[templateIndex + 1];
                                 const templateB = originalData[templateIndex + 2];
@@ -840,36 +844,22 @@ export default class TemplateManager {
                                         canvasG !== templateG ||
                                         canvasB !== templateB)
                                 ) {
-                                    wrongColorPixels.add(pixelCoord);
+                                    wrongMask[idx] = 1;
                                     wrongColorCount++;
                                 }
                             }
 
-                            // Add wrong color pixels to enhanced pixels set for crosshair processing
-                            for (const pixelCoord of wrongColorPixels) {
-                                enhancedPixels.add(pixelCoord);
-                            }
-
-                            // Update the array with the new pixels
-                            const updatedEnhancedPixelsArray = Array.from(enhancedPixels);
                             if (wrongColorCount > 50) {
                                 debugLog(
-                                    `Found ${wrongColorCount} wrong colors, total enhanced: ${updatedEnhancedPixelsArray.length}`,
+                                    `Found ${wrongColorCount} wrong colors, total enhanced: ${enhancedIdx.length}`,
                                 );
                             }
                         }
 
                         // Get border setting once for the entire tile
-                        const borderEnabled = this.getBorderEnabled();
                         let borderCount = 0;
 
-                        // Use updated array if wrong colors were detected, otherwise use original
-                        const finalEnhancedPixelsArray =
-                            this.enhanceWrongColors &&
-                            wrongColorCount > 0 &&
-                            typeof updatedEnhancedPixelsArray !== 'undefined'
-                                ? updatedEnhancedPixelsArray
-                                : enhancedPixelsArray;
+                        const finalEnhancedPixelsArray = enhancedIdx;
 
                         for (
                             let chunkStart = 0;
@@ -897,12 +887,14 @@ export default class TemplateManager {
                                 );
                             }
 
-                            for (const pixelCoord of chunk) {
-                                const [px, py] = pixelCoord.split(',').map(Number);
+                            for (let k = 0; k < chunk.length; k++) {
+                                const idx = chunk[k];
+                                const px = idx % width,
+                                    py = (idx / width) | 0;
 
                                 // Determine if this is a wrong color pixel
-                                const isWrongColor = wrongColorPixels.has(pixelCoord);
-
+                                const isWrongColor = wrongMask !== null && wrongMask[idx] === 1;
+                                
                                 // Build base offsets and optionally add expansion as EXTRA if base is eligible
                                 const enhancedOn = this.getEnhancedSizeEnabled();
                                 const baseOffsets = [
@@ -916,6 +908,8 @@ export default class TemplateManager {
                                     dy,
                                     'center',
                                 ]);
+                                
+                                let offsets = baseOffsets;
                                 if (enhancedOn) {
                                     // Check if any base offset would apply (transparent and not painted, unless wrong color)
                                     let baseEligible = false;
@@ -948,18 +942,10 @@ export default class TemplateManager {
                                             break;
                                         }
                                     }
-                                    if (baseEligible) {
-                                        const radius = this.getCrosshairRadius(); // dynamic radius from settings
-                                        for (let d = 2; d <= radius; d++) {
-                                            crosshairOffsets.push([0, -d, 'center']);
-                                            crosshairOffsets.push([0, d, 'center']);
-                                            crosshairOffsets.push([-d, 0, 'center']);
-                                            crosshairOffsets.push([d, 0, 'center']);
-                                        }
-                                    }
+                                    if (baseEligible) offsets = extendedOffsets;
                                 }
 
-                                for (const [dx, dy, type] of crosshairOffsets) {
+                                for (const [dx, dy] of offsets) {
                                     const x = px + dx;
                                     const y = py + dy;
 
