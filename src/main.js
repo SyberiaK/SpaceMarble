@@ -1393,11 +1393,25 @@ if (!document.getElementById('bm-fullcharge-styles')) {
 
 debugLog(`%c${name}%c (${version}) userscript has loaded!`, 'color: cornflowerblue;', '');
 
+function observeCoalesced(callback) {
+    let queued = false;
+    const obs = new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+            queued = false;
+            callback();
+        });
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return obs;
+}
+
 /** Observe the black color, and add the "Move" button.
  * @since 0.66.3
  */
 function observeBlack() {
-    const observer = new MutationObserver((mutations, observer) => {
+    observeCoalesced(() => {
         const black = document.querySelector('#color-1'); // Attempt to retrieve the black color element for anchoring
 
         if (!black) {
@@ -1437,15 +1451,13 @@ function observeBlack() {
             paintPixel.parentNode?.appendChild(move); // Adds the move button
         }
     });
-
-    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 /** Observes and adds the Map button above the opacity button
  * @since 1.0.0
  */
 function observeOpacityButton() {
-    const observer = new MutationObserver(() => {
+    observeCoalesced(() => {
         // Check if we already added our Map button container
         let mapButtonContainer = document.querySelector('#bm-map-button-container');
         if (mapButtonContainer) return;
@@ -1524,7 +1536,6 @@ function observeOpacityButton() {
         // Insert the Map button container directly into the body with fixed positioning
         document.body.appendChild(mapButtonContainer);
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 /** Deletes all templates from storage with confirmation dialog
