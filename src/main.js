@@ -148,7 +148,6 @@ inject(() => {
     // Overrides fetch
     window.fetch = async function (...args) {
         const response = await originalFetch.apply(this, args); // Sends a fetch
-        const cloned = response.clone(); // Makes a copy of the response
 
         // Retrieves the endpoint name. Unknown endpoint = "ignore"
         const endpointName = (args[0] instanceof Request ? args[0]?.url : args[0]) || 'ignore';
