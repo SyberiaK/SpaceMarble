@@ -861,6 +861,28 @@ export default class TemplateManager {
 
                         const finalEnhancedPixelsArray = enhancedIdx;
 
+                        const enhancedOn = this.getEnhancedSizeEnabled();
+                        const radius = this.getCrosshairRadius();
+                        const crosshairColor = this.getCrosshairColor();
+                        const borderEnabled = this.getBorderEnabled();
+
+                        const baseOffsets = [
+                            [0, -1],
+                            [0, 1],
+                            [-1, 0],
+                            [1, 0],
+                        ];
+                        const cornerOffsets = [
+                            [1, 1],
+                            [-1, 1],
+                            [1, -1],
+                            [-1, -1],
+                        ];
+                        const extendedOffsets = baseOffsets.slice();
+                        for (let d = 2; d <= radius; d++) {
+                            extendedOffsets.push([0, -d], [0, d], [-d, 0], [d, 0]);
+                        }
+
                         for (
                             let chunkStart = 0;
                             chunkStart < finalEnhancedPixelsArray.length;
@@ -894,21 +916,7 @@ export default class TemplateManager {
 
                                 // Determine if this is a wrong color pixel
                                 const isWrongColor = wrongMask !== null && wrongMask[idx] === 1;
-                                
-                                // Build base offsets and optionally add expansion as EXTRA if base is eligible
-                                const enhancedOn = this.getEnhancedSizeEnabled();
-                                const baseOffsets = [
-                                    [0, -1],
-                                    [0, 1],
-                                    [-1, 0],
-                                    [1, 0],
-                                ];
-                                let crosshairOffsets = baseOffsets.map(([dx, dy]) => [
-                                    dx,
-                                    dy,
-                                    'center',
-                                ]);
-                                
+
                                 let offsets = baseOffsets;
                                 if (enhancedOn) {
                                     // Check if any base offset would apply (transparent and not painted, unless wrong color)
@@ -981,8 +989,6 @@ export default class TemplateManager {
                                     if (skipPainted && !isWrongColor) continue;
 
                                     // Apply crosshair with same color system for both normal and wrong colors
-                                    const crosshairColor = this.getCrosshairColor();
-
                                     data[i] = crosshairColor.rgb[0];
                                     data[i + 1] = crosshairColor.rgb[1];
                                     data[i + 2] = crosshairColor.rgb[2];
@@ -992,13 +998,6 @@ export default class TemplateManager {
 
                                 // Apply corner borders if enabled
                                 if (borderEnabled) {
-                                    const cornerOffsets = [
-                                        [1, 1],
-                                        [-1, 1],
-                                        [1, -1],
-                                        [-1, -1], // Diagonal corners
-                                    ];
-
                                     for (const [dx, dy] of cornerOffsets) {
                                         const x = px + dx;
                                         const y = py + dy;
