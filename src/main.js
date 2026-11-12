@@ -66,16 +66,21 @@ inject(() => {
     const name = script?.getAttribute('bm-name') || 'Blue Marble'; // Gets the name value that was passed in. Defaults to "Blue Marble" if nothing was found
     const consoleStyle = script?.getAttribute('bm-cStyle') || ''; // Gets the console style value that was passed in. Defaults to no styling if nothing was found
     const fetchedBlobQueue = new Map(); // Blobs being processed
+    const originalValues = Map.prototype.values;
 
     // Observer to wait for the map to be ready and set window.bmmap
-    const observer = new MutationObserver((mutations) => {
+    const observer = new MutationObserver(() => {
+        if (patched) return;
+
+        patched = true;
+        observer.disconnect();
+
         try {
-            const original = Map.prototype.values;
             Map.prototype.values = function () {
                 if (Array.from(this).some((arr) => arr.some((x) => x && x.color))) {
-                    return original.call(this);
+                    return originalValues.call(this);
                 }
-                const temp = original.call(this);
+                const temp = originalValues.call(this);
                 const entries = Array.from(temp);
 
                 if (entries && entries.filter((x) => x['maps'] instanceof Set).length == 0) {
@@ -88,7 +93,7 @@ inject(() => {
                                 var flyTo = y.flyTo || y['flyTo'];
                                 if (flyTo) {
                                     window.bmmap = y;
-                                    Map.prototype.values = original;
+                                    Map.prototype.values = originalValues;
                                     observer.disconnect();
                                 }
                             }
