@@ -75,7 +75,9 @@ function getDebugLoggingEnabled() {
  */
 export function saveDebugLoggingEnabled(enabled) {
     try {
-        const enabledString = JSON.stringify(enabled);
+        _debugEnabled = !!enabled;
+
+        const enabledString = JSON.stringify(!!enabled);
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
