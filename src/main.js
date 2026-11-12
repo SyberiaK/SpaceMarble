@@ -4546,7 +4546,7 @@ function buildOverlayMain() {
             },
         )
         .buildElement()
-        .addHeader(1, { textContent: 'Skirk Marble' })
+        .addHeader(1, { textContent: 'SpaceMarble' })
         .buildElement()
         .buildElement()
 

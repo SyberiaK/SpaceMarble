@@ -120,7 +120,7 @@ export default class ApiManager {
                     }
 
                     // Log paint data for debugging
-                    debugLog('Skirk Marble: Paint Data:', this.userPaintData);
+                    debugLog('SpaceMarble: Paint Data:', this.userPaintData);
 
                     overlay.updateInnerHTML(
                         'bm-user-name-content',
