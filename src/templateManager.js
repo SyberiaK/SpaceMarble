@@ -554,6 +554,22 @@ export default class TemplateManager {
 
         const tileBitmap = await createImageBitmap(tileBlob);
 
+        // Native-resolution pixels of the server tile, read lazily and at most once.
+        // Analysis only looks at the center pixel of each 3x3 block, which is exactly the
+        // source pixel at (floor(gx / drawMult), floor(gy / drawMult)), so there is no need
+        // to upscale to drawSize and read back a 36 MB buffer.
+        const tileStride = tileBitmap.width;
+        let nativeTilePixels = null;
+        const getNativeTilePixels = () => {
+            if (!nativeTilePixels) {
+                const nativeCanvas = new OffscreenCanvas(tileBitmap.width, tileBitmap.height);
+                const nativeCtx = nativeCanvas.getContext('2d', { willReadFrequently: true });
+                nativeCtx.drawImage(tileBitmap, 0, 0);
+                nativeTilePixels = nativeCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height).data;
+            }
+            return nativeTilePixels;
+        };
+
         const canvas = document.createElement('canvas');
         canvas.width = drawSize;
         canvas.height = drawSize;
@@ -975,31 +991,10 @@ export default class TemplateManager {
                 const coordsParts = tileCoords.split(',');
                 const tileX = parseInt(coordsParts[0]);
                 const tileY = parseInt(coordsParts[1]);
-                const tileKey = `${tileX},${tileY}`;
-                let tileImageData;
+                // Fresh data from the actual server tile (not our overlay with the template drawn)
+                const tilePixels = getNativeTilePixels();
 
-                // ALWAYS get fresh data for accurate pixel counting
-                {
-                    // CRITICAL FIX: Use the actual tile blob data (from server)
-                    // This represents the real pixels painted on the server, not our template overlay
-
-                    const realTileCanvas = document.createElement('canvas');
-                    realTileCanvas.width = drawSize;
-                    realTileCanvas.height = drawSize;
-                    const realTileCtx = realTileCanvas.getContext('2d', {
-                        willReadFrequently: true,
-                    });
-                    realTileCtx.imageSmoothingEnabled = false;
-                    realTileCtx.clearRect(0, 0, drawSize, drawSize);
-                    realTileCtx.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
-
-                    tileImageData = realTileCtx.getImageData(0, 0, drawSize, drawSize);
-                    debugLog(`[Fresh Analysis] Using fresh tile data for ${tileKey}`);
-                }
-
-                const tilePixels = tileImageData.data;
-
-                debugLog(` [Real Tile Analysis] Using actual tile data from server: ${drawSize}x${drawSize}`);
+                debugLog(` [Real Tile Analysis] Using actual tile data from server: ${tileStride}x${tileBitmap.height}`);
 
                 // Prepare per-color breakdown that will be populated from template bitmap comparisons
                 const colorBreakdown = {};
@@ -1062,7 +1057,7 @@ export default class TemplateManager {
                             colorBreakdown[colorKey].required++;
                             requiredCount++;
 
-                            const tileIdx = (gy * drawSize + gx) * 4;
+                            const tileIdx = (Math.floor(gy / this.drawMult) * tileStride + Math.floor(gx / this.drawMult)) * 4;
                             const pr = tilePixels[tileIdx];
                             const pg = tilePixels[tileIdx + 1];
                             const pb = tilePixels[tileIdx + 2];
@@ -1138,17 +1133,7 @@ export default class TemplateManager {
                 // Get fresh tile pixels from the original tileBlob (not our overlay with template drawn)
                 let tilePixels = null;
                 try {
-                    const originalTileCanvas = document.createElement('canvas');
-                    originalTileCanvas.width = drawSize;
-                    originalTileCanvas.height = drawSize;
-                    const originalTileCtx = originalTileCanvas.getContext('2d', {
-                        willReadFrequently: true,
-                    });
-                    originalTileCtx.imageSmoothingEnabled = false;
-                    originalTileCtx.clearRect(0, 0, drawSize, drawSize);
-                    originalTileCtx.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
-                    const originalTileImageData = originalTileCtx.getImageData(0, 0, drawSize, drawSize);
-                    tilePixels = originalTileImageData.data;
+                    tilePixels = getNativeTilePixels();
                 } catch (_) {
                     // If reading fails for any reason, we will skip error map
                 }
@@ -1194,7 +1179,7 @@ export default class TemplateManager {
                                 if (ta < 64) {
                                     try {
                                         const activeTemplate = this.templatesArray?.[0];
-                                        const tileIdx = (gy * drawSize + gx) * 4;
+                                        const tileIdx = (Math.floor(gy / this.drawMult) * tileStride + Math.floor(gx / this.drawMult)) * 4;
                                         const pr = tilePixels[tileIdx];
                                         const pg = tilePixels[tileIdx + 1];
                                         const pb = tilePixels[tileIdx + 2];
@@ -1222,7 +1207,7 @@ export default class TemplateManager {
                                 } catch (_) {}
 
                                 // Strict center-pixel matching. Treat transparent tile pixels as unpainted (not wrong)
-                                const tileIdx = (gy * drawSize + gx) * 4;
+                                const tileIdx = (Math.floor(gy / this.drawMult) * tileStride + Math.floor(gx / this.drawMult)) * 4;
                                 const pr = tilePixels[tileIdx];
                                 const pg = tilePixels[tileIdx + 1];
                                 const pb = tilePixels[tileIdx + 2];
@@ -1300,6 +1285,8 @@ export default class TemplateManager {
                 console.warn('Failed to render error map overlay:', error);
             }
         }
+
+        tileBitmap.close(); // Free the decoded tile; nothing below needs it
 
         // Use compatible blob conversion
         return await new Promise((resolve, reject) => {
