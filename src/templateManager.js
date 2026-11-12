@@ -2,6 +2,15 @@ import Template from './Template.js';
 import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 
+// Temporary profiling: run localStorage.setItem('bmPerf','1') in the console and reload to enable
+const PERF = (() => {
+    try {
+        return localStorage.getItem('bmPerf') === '1';
+    } catch (_) {
+        return false;
+    }
+})();
+
 /** Manages the template system.
  * This class handles all external requests for template modification, creation, and analysis.
  * It serves as the central coordinator between template instances and the user interface.
@@ -446,6 +455,16 @@ export default class TemplateManager {
 
         // Wrong color settings are now loaded in constructor, no need to check here
 
+        const perfStart = PERF ? performance.now() : 0;
+        let perfLast = perfStart;
+        const perfParts = [];
+        const perfMark = (label) => {
+            if (!PERF) return;
+            const now = performance.now();
+            perfParts.push(`${label} ${(now - perfLast).toFixed(0)}ms`);
+            perfLast = now;
+        };
+
         const drawSize = this.tileSize * this.drawMult; // Calculate draw multiplier for scaling
 
         // Format tile coordinates with proper padding for consistent lookup
@@ -584,6 +603,7 @@ export default class TemplateManager {
 
         context.clearRect(0, 0, drawSize, drawSize); // Draws transparent background
         context.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
+        perfMark('setup+decode');
 
         // For each template in this tile, draw them.
         for (let i = 0; i < templatesToDraw.length; i++) {
@@ -968,6 +988,7 @@ export default class TemplateManager {
             }
         }
 
+        perfMark('templates');
         // ==================== PIXEL COUNTING (Storage Fork Logic) ====================
         // Count painted/wrong/required pixels for this tile
         if (templatesToDraw.length > 0) {
@@ -1116,6 +1137,7 @@ export default class TemplateManager {
             }
         }
 
+        perfMark('counting');
         // ==================== ERROR MAP MODE (LURK INTEGRATION) ====================
         // Apply green/red overlay when error map mode is enabled (based on lurk logic)
         if (this.errorMapEnabled && templatesToDraw.length > 0) {
@@ -1276,16 +1298,25 @@ export default class TemplateManager {
             }
         }
 
+        perfMark('errormap');
         tileBitmap.close(); // Free the decoded tile; nothing below needs it
 
         // Use compatible blob conversion
-        return await new Promise((resolve, reject) => {
+        const outBlob = await new Promise((resolve, reject) => {
             if (canvas.convertToBlob) {
                 canvas.convertToBlob({ type: 'image/png' }).then(resolve).catch(reject);
             } else {
                 canvas.toBlob(resolve, 'image/png');
             }
         });
+        if (PERF) {
+            perfMark('encode');
+            console.log(
+                `[bm-perf] tile ${tileCoords} (${templateCount} tpl, ${(outBlob.size / 1024).toFixed(0)} KB out): ` +
+                    `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms`,
+            );
+        }
+        return outBlob;
     }
 
     /** Imports the JSON object, and appends it to any JSON object already loaded
