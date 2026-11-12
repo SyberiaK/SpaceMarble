@@ -1364,39 +1364,56 @@ function observeCoalesced(callback) {
  */
 function observeBlack() {
     observeCoalesced(() => {
-        const black = document.querySelector('#color-1'); // Attempt to retrieve the black color element for anchoring
-
+        const black = document.querySelector('#color-1');
         if (!black) return;
         if (document.querySelector('#bm-button-move')) return;
 
-        const move = document.createElement('button');
-        move.id = 'bm-button-move';
-        move.textContent = 'Move ↑';
-        move.className = 'btn btn-soft';
-        move.onclick = function () {
-            const paintPixel =
-                black.closest('.paint-layout')?.querySelector('.paint-heading') ??
-                black.parentNode?.parentNode?.parentNode?.parentNode?.querySelector('h2');
-            if (!paintPixel?.parentNode) return;
-            const shouldMoveUp = this.textContent == 'Move ↑';
-            paintPixel.parentNode.className = paintPixel.parentNode.className.replace(
-                shouldMoveUp ? 'bottom' : 'top',
-                shouldMoveUp ? 'top' : 'bottom',
-            ); // Moves the rounded box to the top
-            paintPixel.style.borderTopLeftRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
-            paintPixel.style.borderTopRightRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
-            paintPixel.style.borderBottomLeftRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
-            paintPixel.style.borderBottomRightRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
-            this.textContent = shouldMoveUp ? 'Move ↓' : 'Move ↑';
-        };
-
-        // Attempts to find the "Paint Pixel" element for anchoring
         const paintPixel =
             black.closest('.paint-layout')?.querySelector('.paint-heading') ??
             black.parentNode?.parentNode?.parentNode?.parentNode?.querySelector('h2');
         if (!paintPixel?.parentNode) return;
 
-        paintPixel.parentNode?.appendChild(move); // Adds the move button
+        const move = document.createElement('button');
+        move.id = 'bm-button-move';
+        move.textContent = 'Move ↑';
+        move.className = 'btn btn-soft';
+        // Stop the grid/flex cell from squeezing the label
+        move.style.cssText =
+            'width: max-content; min-width: max-content; flex: none; white-space: nowrap; padding-inline: 1rem; justify-self: start;';
+
+        // Swap top/bottom corner radii (or clear the override to restore the original)
+        const flipRadii = (el, flipped) => {
+            if (!el) return;
+            if (!flipped) {
+                el.style.borderTopLeftRadius = '';
+                el.style.borderTopRightRadius = '';
+                el.style.borderBottomRightRadius = '';
+                el.style.borderBottomLeftRadius = '';
+                return;
+            }
+            const cs = getComputedStyle(el); // live object, so snapshot before assigning
+            const [tl, tr, br, bl] = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius];
+            el.style.borderTopLeftRadius = bl;
+            el.style.borderTopRightRadius = br;
+            el.style.borderBottomRightRadius = tr;
+            el.style.borderBottomLeftRadius = tl;
+        };
+
+        move.onclick = function () {
+            const panel = this.closest('.game-paint-panel');
+            if (!panel) return;
+            const toTop = panel.dataset.bmMoved !== '1';
+
+            panel.dataset.bmMoved = toTop ? '1' : '';
+            panel.style.top = toTop ? 'env(safe-area-inset-top, 0px)' : '';
+            panel.style.bottom = toTop ? 'auto' : '';
+            flipRadii(panel, toTop);
+            flipRadii(panel.querySelector('.paint-panel'), toTop);
+
+            this.textContent = toTop ? 'Move ↓' : 'Move ↑';
+        };
+
+        paintPixel.parentNode.appendChild(move);
     });
 }
 
