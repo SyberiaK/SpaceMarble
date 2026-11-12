@@ -91,7 +91,7 @@ function countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, til
     for (let y = 1; y < tempH; y += mult) {
         const gy = y + offsetY;
         if (gy < 0 || gy >= drawSize) continue;
-        const pixelY = Math.floor(gy / mult);
+        const pixelY = (gy / mult) | 0; // gy >= 0 here; no `Math` lookup in the hot path
         const tileRow = pixelY * tileStride;
 
         for (let x = 1; x < tempW; x += mult) {
@@ -133,7 +133,7 @@ function countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, til
             entry.required++;
             totals.required++;
 
-            const pixelX = Math.floor(gx / mult);
+            const pixelX = (gx / mult) | 0;
             const tileIdx = (tileRow + pixelX) * 4;
             const pa = tilePixels[tileIdx + 3];
 
