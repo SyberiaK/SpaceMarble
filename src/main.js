@@ -1384,14 +1384,14 @@ function observeBlack() {
                 black.parentNode?.parentNode?.parentNode?.parentNode?.querySelector('h2');
             if (!paintPixel?.parentNode) return;
             const shouldMoveUp = this.textContent == 'Move ↑';
-            roundedBox.parentNode.className = roundedBox.parentNode.className.replace(
+            paintPixel.parentNode.className = paintPixel.parentNode.className.replace(
                 shouldMoveUp ? 'bottom' : 'top',
                 shouldMoveUp ? 'top' : 'bottom',
             ); // Moves the rounded box to the top
-            roundedBox.style.borderTopLeftRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
-            roundedBox.style.borderTopRightRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
-            roundedBox.style.borderBottomLeftRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
-            roundedBox.style.borderBottomRightRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
+            paintPixel.style.borderTopLeftRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
+            paintPixel.style.borderTopRightRadius = shouldMoveUp ? '0px' : 'var(--radius-box)';
+            paintPixel.style.borderBottomLeftRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
+            paintPixel.style.borderBottomRightRadius = shouldMoveUp ? 'var(--radius-box)' : '0px';
             this.textContent = shouldMoveUp ? 'Move ↓' : 'Move ↑';
         };
 
@@ -1411,8 +1411,8 @@ function observeOpacityButton() {
         let mapButtonContainer = document.querySelector('#bm-map-button-container');
         if (mapButtonContainer) return;
 
-        // Busca o container pai diretamente pela classe (não depende mais do título do botão)
-        const opacityContainer = document.querySelector('.absolute.bottom-3.left-3.z-30');
+        const opacityContainer =
+            document.querySelector('.absolute.bottom-safe-min-3.left-safe-3.z-30') ?? document.querySelector('.absolute.bottom-3.left-3.z-30');
         if (!opacityContainer) return;
 
         // Create a new container for the Map button positioned above the opacity button
@@ -1423,8 +1423,8 @@ function observeOpacityButton() {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            bottom: 230px;
-            left: 12px;
+            bottom: ${Math.round(innerHeight - r.top + 8)}px;
+            left: ${Math.round(r.left)}px;
         `;
 
         // Create the Wrong Pixels button (above Error Map button)
