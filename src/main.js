@@ -1352,15 +1352,18 @@ debugLog(`%c${name}%c (${version}) userscript has loaded!`, 'color: cornflowerbl
 
 function observeCoalesced(callback) {
     let queued = false;
-    const obs = new MutationObserver(() => {
+    const run = () => {
+        queued = false;
+        callback();
+    };
+    const queue = () => {
         if (queued) return;
         queued = true;
-        requestAnimationFrame(() => {
-            queued = false;
-            callback();
-        });
-    });
+        requestAnimationFrame(run);
+    };
+    const obs = new MutationObserver(queue);
     obs.observe(document.body, { childList: true, subtree: true });
+    queue();
     return obs;
 }
 
@@ -1372,7 +1375,7 @@ function observeBlack() {
         const black = document.querySelector('#color-1'); // Attempt to retrieve the black color element for anchoring
 
         if (!black) return;
-        if (!document.querySelector('#bm-button-move')) return;
+        if (document.querySelector('#bm-button-move')) return;
 
         const move = document.createElement('button');
         move.id = 'bm-button-move';
@@ -1396,7 +1399,10 @@ function observeBlack() {
         };
 
         // Attempts to find the "Paint Pixel" element for anchoring
-        const paintPixel = black.parentNode.parentNode.parentNode.parentNode.querySelector('h2');
+        const paintPixel =
+            black.closest('.paint-layout')?.querySelector('.paint-heading') ??
+            black.parentNode?.parentNode?.parentNode?.parentNode?.querySelector('h2');
+        if (!paintPixel?.parentNode) return;
 
         paintPixel.parentNode?.appendChild(move); // Adds the move button
     });
@@ -1414,6 +1420,8 @@ function observeOpacityButton() {
         const opacityContainer =
             document.querySelector('.absolute.bottom-safe-min-3.left-safe-3.z-30') ?? document.querySelector('.absolute.bottom-3.left-3.z-30');
         if (!opacityContainer) return;
+
+        const r = opacityContainer.getBoundingClientRect();
 
         // Create a new container for the Map button positioned above the opacity button
         mapButtonContainer = document.createElement('div');
