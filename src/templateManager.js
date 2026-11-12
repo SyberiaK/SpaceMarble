@@ -1453,12 +1453,9 @@ export default class TemplateManager {
 
         // If the passed in JSON is a Blue Marble template object...
         // Accept both legacy 'SkirkMarble' and current 'BlueMarble' whoami values
-        const validWhoami = [
-            'SpaceMarble',
-            'SkirkMarble',
-            'BlueMarble',
-            this.name?.replace(' ', ''),
-        ].filter(Boolean);
+        const validWhoami = ['SkirkMarble', 'BlueMarble', this.name?.replace(' ', '')].filter(
+            Boolean,
+        );
         if (validWhoami.includes(json?.whoami)) {
             debugLog('Calling #parseBlueMarble...');
             this.#parseBlueMarble(json); // ...parse the template object as Blue Marble

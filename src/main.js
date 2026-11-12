@@ -67,6 +67,7 @@ inject(() => {
     const consoleStyle = script?.getAttribute('bm-cStyle') || ''; // Gets the console style value that was passed in. Defaults to no styling if nothing was found
     const fetchedBlobQueue = new Map(); // Blobs being processed
     const originalValues = Map.prototype.values;
+    let patched = false;
 
     // Observer to wait for the map to be ready and set window.bmmap
     const observer = new MutationObserver(() => {
