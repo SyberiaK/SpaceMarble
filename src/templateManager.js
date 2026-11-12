@@ -603,16 +603,6 @@ export default class TemplateManager {
                 debugLog(`Enhance Wrong Colors is ENABLED`);
                 debugLog(`Current tile: ${tileCoords}`);
                 debugLog(`Tile progress data available: ${this.tileProgress.has(tileCoords)}`);
-                if (this.tileProgress.has(tileCoords)) {
-                    const tileData = this.tileProgress.get(tileCoords);
-                    debugLog(`Tile has color breakdown: ${!!tileData.colorBreakdown}`);
-                    if (tileData.colorBreakdown) {
-                        const wrongColors = Object.entries(tileData.colorBreakdown)
-                            .filter(([color, data]) => data.wrong > 0)
-                            .map(([color, data]) => `${color}(${data.wrong} wrong)`);
-                        //  console.log(`🎯 [Debug] Wrong colors in this tile: ${wrongColors.join(', ')}`);
-                    }
-                }
             }
 
             // Debug logs
