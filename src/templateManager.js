@@ -502,6 +502,13 @@ export default class TemplateManager {
         const templateCount = templatesToDraw?.length || 0; // Number of templates to draw on this tile
         debugLog(`templateCount = ${templateCount}`);
 
+        if (templateCount === 0) {
+            this.overlay.handleDisplayStatus(`Displaying 0 templates.`);
+            this.currentlyDisplayedTemplates.clear();
+            this.lastDisplayedCount = 0;
+            return tileBlob;
+        }
+
         if (templateCount > 0) {
             // SMART DETECTION: Track which templates are currently being displayed
             this.currentlyDisplayedTemplates.clear();
@@ -543,11 +550,6 @@ export default class TemplateManager {
             this.overlay.handleDisplayStatus(
                 `Displaying ${templateCount} template${templateCount == 1 ? '' : 's'}.\nTotal pixels: ${pixelCountFormatted}`,
             );
-        } else {
-            this.overlay.handleDisplayStatus(`Displaying ${templateCount} templates.`);
-            this.currentlyDisplayedTemplates.clear();
-            this.lastDisplayedCount = 0;
-            debugLog(`[Smart Detection] No templates displayed`);
         }
 
         const tileBitmap = await createImageBitmap(tileBlob);
@@ -981,8 +983,6 @@ export default class TemplateManager {
                     // CRITICAL FIX: Use the actual tile blob data (from server)
                     // This represents the real pixels painted on the server, not our template overlay
 
-                    // Get the raw tile data directly from tileBlob parameter
-                    const realTileBitmap = await createImageBitmap(tileBlob);
                     const realTileCanvas = document.createElement('canvas');
                     realTileCanvas.width = drawSize;
                     realTileCanvas.height = drawSize;
@@ -991,7 +991,7 @@ export default class TemplateManager {
                     });
                     realTileCtx.imageSmoothingEnabled = false;
                     realTileCtx.clearRect(0, 0, drawSize, drawSize);
-                    realTileCtx.drawImage(realTileBitmap, 0, 0, drawSize, drawSize);
+                    realTileCtx.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
 
                     tileImageData = realTileCtx.getImageData(0, 0, drawSize, drawSize);
                     debugLog(`[Fresh Analysis] Using fresh tile data for ${tileKey}`);
@@ -1138,8 +1138,6 @@ export default class TemplateManager {
                 // Get fresh tile pixels from the original tileBlob (not our overlay with template drawn)
                 let tilePixels = null;
                 try {
-                    // Use the original tile blob data for accurate pixel comparison
-                    const originalTileBitmap = await createImageBitmap(tileBlob);
                     const originalTileCanvas = document.createElement('canvas');
                     originalTileCanvas.width = drawSize;
                     originalTileCanvas.height = drawSize;
@@ -1148,7 +1146,7 @@ export default class TemplateManager {
                     });
                     originalTileCtx.imageSmoothingEnabled = false;
                     originalTileCtx.clearRect(0, 0, drawSize, drawSize);
-                    originalTileCtx.drawImage(originalTileBitmap, 0, 0, drawSize, drawSize);
+                    originalTileCtx.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
                     const originalTileImageData = originalTileCtx.getImageData(0, 0, drawSize, drawSize);
                     tilePixels = originalTileImageData.data;
                 } catch (_) {
