@@ -214,15 +214,8 @@ export async function buildOverlayMain({
                             const coordPxX = document.getElementById('bm-input-px');
                             const coordPxY = document.getElementById('bm-input-py');
 
-                            if (
-                                !coordTlX.value ||
-                                !coordTlY.value ||
-                                !coordPxX.value ||
-                                !coordPxY.value
-                            ) {
-                                instance.handleDisplayError(
-                                    `Please fill in all coordinate fields!`,
-                                );
+                            if (!coordTlX.value || !coordTlY.value || !coordPxX.value || !coordPxY.value) {
+                                instance.handleDisplayError(`Please fill in all coordinate fields!`);
                                 return;
                             }
 
@@ -231,16 +224,12 @@ export async function buildOverlayMain({
                                 return;
                             }
 
-                            templateManager.createTemplate(
-                                input.files[0],
-                                input.files[0]?.name.replace(/\.[^/.]+$/, ''),
-                                [
-                                    Number(coordTlX.value),
-                                    Number(coordTlY.value),
-                                    Number(coordPxX.value),
-                                    Number(coordPxY.value),
-                                ],
-                            );
+                            templateManager.createTemplate(input.files[0], input.files[0]?.name.replace(/\.[^/.]+$/, ''), [
+                                Number(coordTlX.value),
+                                Number(coordTlY.value),
+                                Number(coordPxX.value),
+                                Number(coordPxY.value),
+                            ]);
 
                             setTimeout(() => updateMiniTracker(), 500);
                             instance.handleDisplayStatus(`Template uploaded successfully!`);
@@ -326,22 +315,17 @@ export async function buildOverlayMain({
                         button.onmouseover = () => (button.style.transform = 'translateY(-1px)');
                         button.onmouseout = () => (button.style.transform = 'translateY(0)');
                         button.onclick = () => {
-                            const currentlyEnabled =
-                                localStorage.getItem('bm-quick-paint-enabled') === 'true';
+                            const currentlyEnabled = localStorage.getItem('bm-quick-paint-enabled') === 'true';
                             if (currentlyEnabled) {
                                 localStorage.setItem('bm-quick-paint-enabled', 'false');
                                 button.innerHTML = icons.quickFillIcon + ' Quick Paint';
-                                button.style.background =
-                                    'linear-gradient(135deg, #28a745, #20c997)';
+                                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
                                 instance.handleDisplayStatus('Quick Paint disabled.');
                             } else {
                                 localStorage.setItem('bm-quick-paint-enabled', 'true');
                                 button.innerHTML = icons.quickFillIcon + ' Quick Paint ON';
-                                button.style.background =
-                                    'linear-gradient(135deg, #ffc107, #ff8c00)';
-                                instance.handleDisplayStatus(
-                                    'Quick Paint enabled! Place a pixel to automatically paint more with selected color.',
-                                );
+                                button.style.background = 'linear-gradient(135deg, #ffc107, #ff8c00)';
+                                instance.handleDisplayStatus('Quick Paint enabled! Place a pixel to automatically paint more with selected color.');
                             }
                         };
                     },
@@ -452,11 +436,7 @@ export function buildOverlayTabTemplate() {
  * @returns {Object} The built color filter overlay
  * @since 1.0.0
  */
-export function buildColorFilterOverlay({
-    templateManager,
-    refreshTemplateDisplay,
-    updateMiniTracker,
-}) {
+export function buildColorFilterOverlay({ templateManager, refreshTemplateDisplay, updateMiniTracker }) {
     // This would contain the complex color filter overlay building logic
     // For now, returning null to maintain compatibility
     return null;

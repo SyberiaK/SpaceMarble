@@ -31,10 +31,7 @@ export function escapeHTML(text) {
  * console.log(serverTPtoDisplayTP(['12', '123'], ['34', '567'])); // [34, 3567]
  */
 export function serverTPtoDisplayTP(tile, pixel) {
-    return [
-        (parseInt(tile[0]) % 4) * 1000 + parseInt(pixel[0]),
-        (parseInt(tile[1]) % 4) * 1000 + parseInt(pixel[1]),
-    ];
+    return [(parseInt(tile[0]) % 4) * 1000 + parseInt(pixel[0]), (parseInt(tile[1]) % 4) * 1000 + parseInt(pixel[1])];
 }
 
 /** Gets the debug logging enabled setting from cache (takes from storage at first call)

@@ -4,12 +4,7 @@
  */
 
 import { debugLog } from './utils.js';
-import {
-    getTileRefreshPaused,
-    saveTileRefreshPaused,
-    getSmartTileCacheEnabled,
-    saveSmartTileCacheEnabled,
-} from './settingsManager.js';
+import { getTileRefreshPaused, saveTileRefreshPaused, getSmartTileCacheEnabled, saveSmartTileCacheEnabled } from './settingsManager.js';
 
 /** Global state for tile refresh pausing */
 let tileRefreshPaused = false;
@@ -69,9 +64,7 @@ function initializeSmartTileCache() {
         cacheHits = stats.hits || 0;
         cacheMisses = stats.misses || 0;
 
-        debugLog(
-            `[Tile Cache] Initialized - Enabled: ${smartTileCacheEnabled}, Cache size: ${smartTileCache.size}`,
-        );
+        debugLog(`[Tile Cache] Initialized - Enabled: ${smartTileCacheEnabled}, Cache size: ${smartTileCache.size}`);
     } catch (error) {
         console.warn('Failed to initialize smart tile cache:', error);
         clearSmartTileCache();
@@ -88,9 +81,7 @@ function initializeSmartTileCache() {
 function generateCacheKey(tileCoords, templateArray, tileBlob) {
     // Format coordinates consistently
     const coordsKey = Array.isArray(tileCoords)
-        ? tileCoords[0].toString().padStart(4, '0') +
-          ',' +
-          tileCoords[1].toString().padStart(4, '0')
+        ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
         : tileCoords.toString();
 
     // Create a simple hash of active templates and their settings
@@ -138,9 +129,7 @@ function evictLRUEntries() {
         cacheAccessOrder.delete(key);
     }
 
-    debugLog(
-        `[Tile Cache] Evicted ${entriesToRemove.length} LRU entries, cache size now: ${smartTileCache.size}`,
-    );
+    debugLog(`[Tile Cache] Evicted ${entriesToRemove.length} LRU entries, cache size now: ${smartTileCache.size}`);
 }
 
 /** Stores a processed tile in the smart cache
@@ -214,10 +203,7 @@ function clearSmartTileCache() {
  * @since 1.0.0
  */
 export function getSmartCacheStats() {
-    const hitRate =
-        cacheHits + cacheMisses > 0
-            ? ((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(1)
-            : '0.0';
+    const hitRate = cacheHits + cacheMisses > 0 ? ((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(1) : '0.0';
     return {
         enabled: smartTileCacheEnabled,
         size: smartTileCache.size,
@@ -292,9 +278,7 @@ export function initializeTileRefreshPause(templateManager) {
 
                 // Also store in frozen cache for pause functionality
                 const tileKey = Array.isArray(tileCoords)
-                    ? tileCoords[0].toString().padStart(4, '0') +
-                      ',' +
-                      tileCoords[1].toString().padStart(4, '0')
+                    ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
                     : tileCoords.toString();
                 frozenTileCache.set(tileKey, result);
 
@@ -312,10 +296,7 @@ export function initializeTileRefreshPause(templateManager) {
     // Apply the pause state
     applyTileRefreshPause(templateManager);
 
-    debugLog(
-        '[Tile Manager] Initialized with cache and pause functionality. Paused:',
-        tileRefreshPaused,
-    );
+    debugLog('[Tile Manager] Initialized with cache and pause functionality. Paused:', tileRefreshPaused);
 }
 
 /** Applies the tile refresh pause setting to the template manager
@@ -328,9 +309,7 @@ function applyTileRefreshPause(templateManager) {
         templateManager.drawTemplateOnTile = function (tileBlob, tileCoords) {
             // Use the same formatting as the original function for consistency
             const tileKey = Array.isArray(tileCoords)
-                ? tileCoords[0].toString().padStart(4, '0') +
-                  ',' +
-                  tileCoords[1].toString().padStart(4, '0')
+                ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
                 : tileCoords.toString();
 
             // Check if we have a cached version with templates applied
@@ -340,11 +319,7 @@ function applyTileRefreshPause(templateManager) {
             }
 
             // If no cache, return original blob (fallback)
-            debugLog(
-                '⏸️ [Tile Refresh Paused] No cache for tile:',
-                tileKey,
-                '- returning original',
-            );
+            debugLog('⏸️ [Tile Refresh Paused] No cache for tile:', tileKey, '- returning original');
             return tileBlob;
         };
     } else {
@@ -371,9 +346,7 @@ function applyTileRefreshPause(templateManager) {
 
                     // Also store in frozen cache for pause functionality
                     const tileKey = Array.isArray(tileCoords)
-                        ? tileCoords[0].toString().padStart(4, '0') +
-                          ',' +
-                          tileCoords[1].toString().padStart(4, '0')
+                        ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
                         : tileCoords.toString();
                     frozenTileCache.set(tileKey, result);
 
@@ -397,9 +370,7 @@ function logCacheState() {
     debugLog(`🧊 [Tile Cache] Currently cached tiles: ${frozenTileCache.size}`);
     if (frozenTileCache.size > 0) {
         const keys = Array.from(frozenTileCache.keys()).slice(0, 5); // Show first 5 keys
-        debugLog(
-            `🧊 [Tile Cache] Sample cached tiles: ${keys.join(', ')}${frozenTileCache.size > 5 ? '...' : ''}`,
-        );
+        debugLog(`🧊 [Tile Cache] Sample cached tiles: ${keys.join(', ')}${frozenTileCache.size > 5 ? '...' : ''}`);
     }
 }
 
@@ -462,9 +433,7 @@ export function getTilePerformanceStats() {
     return {
         paused: tileRefreshPaused,
         cachedTiles: frozenTileCache.size,
-        message: tileRefreshPaused
-            ? `Tile processing is paused. ${frozenTileCache.size} tiles cached.`
-            : 'Tile processing is active',
+        message: tileRefreshPaused ? `Tile processing is paused. ${frozenTileCache.size} tiles cached.` : 'Tile processing is active',
     };
 }
 

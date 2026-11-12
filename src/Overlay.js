@@ -380,8 +380,7 @@ export default class Overlay {
      * </body>
      */
     addButtonHelp(additionalProperties = {}, callback = () => {}) {
-        const tooltip =
-            additionalProperties['title'] ?? additionalProperties['textContent'] ?? 'Help: No info'; // Retrieves the tooltip
+        const tooltip = additionalProperties['title'] ?? additionalProperties['textContent'] ?? 'Help: No info'; // Retrieves the tooltip
 
         // Makes sure the tooltip is stored in the title property
         delete additionalProperties['textContent'];
@@ -602,9 +601,7 @@ export default class Overlay {
 
         // Retrieves the elements (allows either '#id' or 'id' to be passed in)
         moveMe = document.querySelector(moveMe?.[0] == '#' ? moveMe : '#' + moveMe);
-        const dragHandle = document.querySelector(
-            iMoveThings?.[0] == '#' ? iMoveThings : '#' + iMoveThings,
-        );
+        const dragHandle = document.querySelector(iMoveThings?.[0] == '#' ? iMoveThings : '#' + iMoveThings);
 
         // What to do when one of the two elements are not found
         if (!moveMe || !dragHandle) {
@@ -688,15 +685,7 @@ export default class Overlay {
          * @returns {boolean} - True if the element is interactive or scrollable.
          */
         const isElementInteractive = (element) => {
-            const interactiveTags = [
-                'BUTTON',
-                'INPUT',
-                'TEXTAREA',
-                'SELECT',
-                'A',
-                'VIDEO',
-                'AUDIO',
-            ];
+            const interactiveTags = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A', 'VIDEO', 'AUDIO'];
             let current = element;
 
             // Traverse up the DOM tree from the clicked element up to the drag handle
@@ -711,19 +700,13 @@ export default class Overlay {
                 // 3. Check for IMG elements with click handlers or specific attributes
                 if (
                     current.tagName === 'IMG' &&
-                    (current.style.cursor === 'pointer' ||
-                        current.alt?.includes('Click to') ||
-                        current.onclick ||
-                        current.addEventListener)
+                    (current.style.cursor === 'pointer' || current.alt?.includes('Click to') || current.onclick || current.addEventListener)
                 )
                     return true;
 
                 // 4. Check if the element is scrollable
                 const isScrollable =
-                    style.overflowY === 'auto' ||
-                    style.overflowY === 'scroll' ||
-                    style.overflowX === 'auto' ||
-                    style.overflowX === 'scroll';
+                    style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflowX === 'auto' || style.overflowX === 'scroll';
 
                 if (isScrollable)
                     return (

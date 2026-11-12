@@ -25,12 +25,7 @@ import {
 } from './tileManager.js';
 import * as Settings from './settingsManager.js';
 import { getDragModeEnabled, saveDragModeEnabled } from './settingsManager.js';
-import {
-    getTemplateColorSort,
-    saveTemplateColorSort,
-    getCompactSort,
-    saveCompactSort,
-} from './settingsManager.js';
+import { getTemplateColorSort, saveTemplateColorSort, getCompactSort, saveCompactSort } from './settingsManager.js';
 
 const name = GM_info.script.name.toString(); // Name of userscript
 const version = GM_info.script.version.toString(); // Version of userscript
@@ -194,11 +189,7 @@ inject(() => {
                 .catch((err) => {
                     console.error(`%c${name}%c: Failed to parse JSON: `, consoleStyle, '', err);
                 });
-        } else if (
-            contentType.includes('image/') &&
-            !endpointName.includes('openfreemap') &&
-            !endpointName.includes('maps')
-        ) {
+        } else if (contentType.includes('image/') && !endpointName.includes('openfreemap') && !endpointName.includes('maps')) {
             // Fetch custom for all images but opensourcemap
 
             const blink = Date.now(); // Current time
@@ -239,11 +230,7 @@ inject(() => {
             }).catch((exception) => {
                 const elapsed = Date.now();
                 console.error(`%c${name}%c: Failed to Promise blob!`, consoleStyle, '');
-                console.groupCollapsed(
-                    `%c${name}%c: Details of failed blob Promise:`,
-                    consoleStyle,
-                    '',
-                );
+                console.groupCollapsed(`%c${name}%c: Details of failed blob Promise:`, consoleStyle, '');
                 // debugLog(`Endpoint: ${endpointName}\nThere are ${fetchedBlobQueue.size} blobs processing...\nBlink: ${blink.toLocaleString()}\nTime Since Blink: ${String(Math.floor(elapsed/60000)).padStart(2,'0')}:${String(Math.floor(elapsed/1000) % 60).padStart(2,'0')}.${String(elapsed % 1000).padStart(3,'0')} MM:SS.mmm`);
                 console.error(`Exception stack:`, exception);
                 console.groupEnd();
@@ -635,8 +622,7 @@ GM_addStyle(searchWindowCSS);
 
 // Imports the Roboto Mono font family
 let robotoStylesheetLink = document.createElement('link');
-robotoStylesheetLink.href =
-    'https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap';
+robotoStylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap';
 robotoStylesheetLink.rel = 'preload';
 robotoStylesheetLink.as = 'style';
 robotoStylesheetLink.onload = function () {
@@ -647,8 +633,7 @@ document.head?.appendChild(robotoStylesheetLink);
 
 // Imports the Outfit font family
 let outfitStylesheetLink = document.createElement('link');
-outfitStylesheetLink.href =
-    'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap';
+outfitStylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap';
 outfitStylesheetLink.rel = 'preload';
 outfitStylesheetLink.as = 'style';
 outfitStylesheetLink.onload = function () {
@@ -707,9 +692,7 @@ async function loadTemplates() {
                 }
 
                 if (corruptedChunks > 0) {
-                    throw new Error(
-                        `TM data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`,
-                    );
+                    throw new Error(`TM data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`);
                 }
 
                 data = combinedData;
@@ -735,9 +718,7 @@ async function loadTemplates() {
                         storageTemplates.templates = {};
                     }
                     storageSource = 'TamperMonkey (async)';
-                    debugLog(
-                        `TM templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`,
-                    );
+                    debugLog(`TM templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
                 } catch (parseError) {
                     console.error('❌ TM JSON parse failed:', parseError);
                     throw parseError;
@@ -765,9 +746,7 @@ async function loadTemplates() {
                 }
 
                 if (corruptedChunks > 0) {
-                    throw new Error(
-                        `TM legacy data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`,
-                    );
+                    throw new Error(`TM legacy data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`);
                 }
 
                 data = combinedData;
@@ -793,9 +772,7 @@ async function loadTemplates() {
                         storageTemplates.templates = {};
                     }
                     storageSource = 'TamperMonkey (legacy)';
-                    debugLog(
-                        `TM legacy templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`,
-                    );
+                    debugLog(`TM legacy templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
                 } catch (parseError) {
                     console.error('❌ TM legacy JSON parse failed:', parseError);
                     throw parseError;
@@ -828,9 +805,7 @@ async function loadTemplates() {
                 }
 
                 if (corruptedChunks > 0) {
-                    throw new Error(
-                        `LS data corrupted: ${corruptedChunks}/${lsChunkCount} chunks missing`,
-                    );
+                    throw new Error(`LS data corrupted: ${corruptedChunks}/${lsChunkCount} chunks missing`);
                 }
 
                 data = combinedData;
@@ -855,9 +830,7 @@ async function loadTemplates() {
                         storageTemplates.templates = {};
                     }
                     storageSource = 'localStorage (fallback)';
-                    debugLog(
-                        `LS templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`,
-                    );
+                    debugLog(`LS templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
                 } catch (parseError) {
                     console.error('❌ LS JSON parse failed:', parseError);
                     throw parseError;
@@ -912,9 +885,7 @@ async function loadTemplates() {
             if (backupCount > 0) {
                 storageTemplates = backupData;
                 // Save recovered data to both storages (removed setTimeout for performance)
-                templateManager
-                    .updateTemplateWithColorFilter()
-                    .catch((e) => console.warn('Template color filter update failed:', e));
+                templateManager.updateTemplateWithColorFilter().catch((e) => console.warn('Template color filter update failed:', e));
             }
         } catch (recoveryError) {
             console.error('Recovery failed:', recoveryError);
@@ -1047,9 +1018,7 @@ async function migrateAndValidateStorage() {
                     }
 
                     if (missingChunks > 0) {
-                        console.error(
-                            `❌ TM data corruption: ${missingChunks}/${chunkCount} chunks missing`,
-                        );
+                        console.error(`❌ TM data corruption: ${missingChunks}/${chunkCount} chunks missing`);
                         tmData = null; // Mark as corrupted
                     } else {
                         tmData = combinedData;
@@ -1081,9 +1050,7 @@ async function migrateAndValidateStorage() {
                     }
 
                     if (missingChunks > 0) {
-                        console.error(
-                            `❌ TM legacy data corruption: ${missingChunks}/${chunkCount} chunks missing`,
-                        );
+                        console.error(`❌ TM legacy data corruption: ${missingChunks}/${chunkCount} chunks missing`);
                         tmData = null; // Mark as corrupted
                     } else {
                         tmData = combinedData;
@@ -1121,9 +1088,7 @@ async function migrateAndValidateStorage() {
                 }
 
                 if (missingChunks > 0) {
-                    console.error(
-                        `❌ LS data corruption: ${missingChunks}/${lsChunkCount} chunks missing`,
-                    );
+                    console.error(`❌ LS data corruption: ${missingChunks}/${lsChunkCount} chunks missing`);
                     lsData = null; // Mark as corrupted
                 } else {
                     lsData = combinedData;
@@ -1149,9 +1114,7 @@ async function migrateAndValidateStorage() {
                 const parsed = JSON.parse(tmData);
                 if (parsed && typeof parsed === 'object' && parsed.templates) {
                     tmValid = true;
-                    debugLog(
-                        `TM data is valid JSON with ${Object.keys(parsed.templates).length} templates`,
-                    );
+                    debugLog(`TM data is valid JSON with ${Object.keys(parsed.templates).length} templates`);
                 } else {
                     console.warn('⚠️ TM data is not a valid template structure');
                 }
@@ -1166,9 +1129,7 @@ async function migrateAndValidateStorage() {
                 const parsed = JSON.parse(lsData);
                 if (parsed && typeof parsed === 'object' && parsed.templates) {
                     lsValid = true;
-                    debugLog(
-                        `LS data is valid JSON with ${Object.keys(parsed.templates).length} templates`,
-                    );
+                    debugLog(`LS data is valid JSON with ${Object.keys(parsed.templates).length} templates`);
                 } else {
                     console.warn('⚠️ LS data is not a valid template structure');
                 }
@@ -1195,9 +1156,7 @@ async function migrateAndValidateStorage() {
 
         // If we have valid data in both, use the most recent
         if (tmValid && lsValid && tmTimestamp !== lsTimestamp) {
-            debugLog(
-                `Data sync: TM(${new Date(tmTimestamp).toLocaleString()}) vs LS(${new Date(lsTimestamp).toLocaleString()})`,
-            );
+            debugLog(`Data sync: TM(${new Date(tmTimestamp).toLocaleString()}) vs LS(${new Date(lsTimestamp).toLocaleString()})`);
 
             if (tmTimestamp > lsTimestamp) {
                 // TamperMonkey is newer, update localStorage
@@ -1210,9 +1169,7 @@ async function migrateAndValidateStorage() {
                         localStorage.setItem('bmTemplates', tmData);
                         localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
                         // Clean up any existing chunks
-                        const oldChunkCount = parseInt(
-                            localStorage.getItem('bmTemplates_chunkCount') || '0',
-                        );
+                        const oldChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
                         for (let i = 0; i < oldChunkCount; i++) {
                             localStorage.removeItem(`bmTemplates_part_${i}`);
                         }
@@ -1478,8 +1435,7 @@ function observeOpacityButton() {
         const wrongPixelsButton = document.createElement('button');
         wrongPixelsButton.id = 'bm-button-wrong-pixels';
         wrongPixelsButton.innerHTML = '❌';
-        wrongPixelsButton.className =
-            'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
+        wrongPixelsButton.className = 'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
         wrongPixelsButton.title = 'View Wrong Pixels Coordinates';
         wrongPixelsButton.onclick = function () {
             showWrongPixelsDialog(overlayMain);
@@ -1488,8 +1444,7 @@ function observeOpacityButton() {
         const missingPixelsButton = document.createElement('button');
         missingPixelsButton.id = 'bm-button-missing-pixels';
         missingPixelsButton.innerHTML = '🔍';
-        missingPixelsButton.className =
-            'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
+        missingPixelsButton.className = 'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
         missingPixelsButton.title = 'View Missing Pixel Coordinates';
         missingPixelsButton.onclick = function () {
             showMissingPixelsDialog(overlayMain);
@@ -1724,10 +1679,7 @@ function clearAllStorage(instance) {
                 // Clear any remaining Blue Marble related session storage
                 try {
                     Object.keys(sessionStorage).forEach((key) => {
-                        if (
-                            key.toLowerCase().includes('bm') ||
-                            key.toLowerCase().includes('bluemarble')
-                        ) {
+                        if (key.toLowerCase().includes('bm') || key.toLowerCase().includes('bluemarble')) {
                             sessionStorage.removeItem(key);
                         }
                     });
@@ -1735,17 +1687,11 @@ function clearAllStorage(instance) {
                     console.warn('Could not clear session storage:', e);
                 }
 
-                instance.handleDisplayStatus(
-                    `🧹 Storage cleared! Deleted ${deletedCount} keys. Please refresh the page.`,
-                );
+                instance.handleDisplayStatus(`🧹 Storage cleared! Deleted ${deletedCount} keys. Please refresh the page.`);
 
                 // Suggest page refresh
                 setTimeout(() => {
-                    if (
-                        confirm(
-                            'Storage cleared successfully!\n\nRefresh the page to complete the reset?',
-                        )
-                    ) {
+                    if (confirm('Storage cleared successfully!\n\nRefresh the page to complete the reset?')) {
                         window.location.reload();
                     }
                 }, 2000);
@@ -2473,18 +2419,14 @@ function deleteSelectedTemplate(instance) {
                             // Remove overlay
                             document.body.removeChild(overlay);
 
-                            instance.handleDisplayStatus(
-                                `Successfully deleted template "${templateName}"!`,
-                            );
+                            instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
                             debugLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
                         } else {
                             throw new Error('Delete operation returned false');
                         }
                     } catch (error) {
                         console.error('❌ Failed to delete template:', error);
-                        instance.handleDisplayError(
-                            'Failed to delete template. Check console for details.',
-                        );
+                        instance.handleDisplayError('Failed to delete template. Check console for details.');
                     }
                 },
             );
@@ -2757,11 +2699,7 @@ function showImportDialog(instance) {
 function showWrongPixelsDialog(instance) {
     const wrongPixelsList = [];
 
-    if (
-        !templateManager ||
-        !templateManager.tileProgress ||
-        templateManager.tileProgress.size === 0
-    ) {
+    if (!templateManager || !templateManager.tileProgress || templateManager.tileProgress.size === 0) {
         instance.handleDisplayError('No tile data available. Please load a template first!');
         return;
     }
@@ -3020,11 +2958,7 @@ function showWrongPixelsDialog(instance) {
 function showMissingPixelsDialog(instance) {
     const missingPixelsList = [];
 
-    if (
-        !templateManager ||
-        !templateManager.tileProgress ||
-        templateManager.tileProgress.size === 0
-    ) {
+    if (!templateManager || !templateManager.tileProgress || templateManager.tileProgress.size === 0) {
         instance.handleDisplayError('No tile data available. Please load a template first!');
         return;
     }
@@ -3050,9 +2984,7 @@ function showMissingPixelsDialog(instance) {
     }
 
     if (missingPixelsList.length === 0) {
-        instance.handleDisplayStatus(
-            '🎉 No missing pixels found! All required pixels are painted or wrong.',
-        );
+        instance.handleDisplayStatus('🎉 No missing pixels found! All required pixels are painted or wrong.');
         return;
     }
 
@@ -3912,9 +3844,7 @@ function showTemplateManageDialog(instance) {
                 if (templateCoords && templateCoords !== 'Unknown location') {
                     const coords = templateCoords.split(', ');
                     if (coords.length === 4) {
-                        const [tileX, tileY, pX, pY] = coords.map((coord) =>
-                            parseInt(coord.trim(), 10),
-                        );
+                        const [tileX, tileY, pX, pY] = coords.map((coord) => parseInt(coord.trim(), 10));
                         const coordinates = [tileX, tileY, pX, pY];
 
                         const coordTxInput = document.querySelector('#bm-input-tx');
@@ -3945,9 +3875,7 @@ function showTemplateManageDialog(instance) {
                                 `🧭 ${navigationMethod === 'openurl' ? 'Navigating' : 'Flying'} to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}! Coordinates auto-filled.`,
                             );
                         } else {
-                            instance.handleDisplayStatus(
-                                '❌ Unable to convert coordinates to location!',
-                            );
+                            instance.handleDisplayStatus('❌ Unable to convert coordinates to location!');
                         }
                     } else {
                         instance.handleDisplayStatus('❌ Invalid coordinate format!');
@@ -4002,26 +3930,20 @@ function showTemplateManageDialog(instance) {
                             if (success) {
                                 invalidateTemplateCache();
                                 templateItem.remove();
-                                instance.handleDisplayStatus(
-                                    `Successfully deleted template "${templateName}"!`,
-                                );
+                                instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
                                 debugLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
 
                                 const remainingTemplates = templateList.children.length;
                                 if (remainingTemplates === 0) {
                                     document.body.removeChild(overlay);
-                                    instance.handleDisplayStatus(
-                                        'All templates deleted - dialog closed',
-                                    );
+                                    instance.handleDisplayStatus('All templates deleted - dialog closed');
                                 }
                             } else {
                                 throw new Error('Delete operation returned false');
                             }
                         } catch (error) {
                             console.error('❌ Failed to delete template:', error);
-                            instance.handleDisplayError(
-                                'Failed to delete template. Check console for details.',
-                            );
+                            instance.handleDisplayError('Failed to delete template. Check console for details.');
                         }
                     },
                 );
@@ -4072,9 +3994,7 @@ function showTemplateManageDialog(instance) {
                 toggleBtn.style.background = newState ? '#10b981' : '#4b5563';
                 toggleBtn.style.color = newState ? 'white' : '#d1d5db';
 
-                instance.handleDisplayStatus(
-                    `${newState ? 'Enabled' : 'Disabled'} template "${templateName}"!`,
-                );
+                instance.handleDisplayStatus(`${newState ? 'Enabled' : 'Disabled'} template "${templateName}"!`);
 
                 setTimeout(() => {
                     if (typeof clearColorMenuCache === 'function') {
@@ -4361,8 +4281,7 @@ function buildOverlayMain() {
 
                             // Save original innerHTML once
                             if (!colorFilterButton.dataset.originalHtml) {
-                                colorFilterButton.dataset.originalHtml =
-                                    colorFilterButton.innerHTML;
+                                colorFilterButton.dataset.originalHtml = colorFilterButton.innerHTML;
                             }
                             // Reduce to icon-only
                             const svg = colorFilterButton.querySelector('svg');
@@ -4469,8 +4388,7 @@ function buildOverlayMain() {
                         if (colorFilterButton) {
                             // Restore content
                             if (colorFilterButton.dataset.originalHtml) {
-                                colorFilterButton.innerHTML =
-                                    colorFilterButton.dataset.originalHtml;
+                                colorFilterButton.innerHTML = colorFilterButton.dataset.originalHtml;
                             }
                             // Clear compact styles
                             colorFilterButton.style.width = '';
@@ -4537,9 +4455,7 @@ function buildOverlayMain() {
                     // Update accessibility information for screen readers and tooltips
 
                     // Update alt text to reflect current state for screen readers and tooltips
-                    img.alt = isMinimized
-                        ? 'Blue Marble Icon - Minimized (Click to maximize)'
-                        : 'Blue Marble Icon - Maximized (Click to minimize)';
+                    img.alt = isMinimized ? 'Blue Marble Icon - Minimized (Click to maximize)' : 'Blue Marble Icon - Maximized (Click to minimize)';
 
                     // No status message needed - state change is visually obvious to users
                 });
@@ -4554,9 +4470,7 @@ function buildOverlayMain() {
             id: 'bm-separator',
             style: (() => {
                 try {
-                    const show = JSON.parse(
-                        localStorage.getItem('bmShowInformationHeader') ?? 'true',
-                    );
+                    const show = JSON.parse(localStorage.getItem('bmShowInformationHeader') ?? 'true');
                     return show ? '' : 'display: none;';
                 } catch (e) {
                     return '';
@@ -4648,9 +4562,7 @@ function buildOverlayMain() {
                 button.onclick = () => {
                     const coords = instance.apiManager?.coordsTilePixel; // Retrieves the coords from the API manager
                     if (!coords?.[0]) {
-                        instance.handleDisplayError(
-                            'Coordinates are malformed! Did you try clicking on the canvas first?',
-                        );
+                        instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
                         return;
                     }
                     instance.updateInnerHTML('bm-input-tx', coords?.[0] || '');
@@ -4773,8 +4685,7 @@ function buildOverlayMain() {
             justify-content: center;
             transition: background 0.2s;
           `,
-                innerHTML:
-                    '<div style="width: 30px; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px;"></div>',
+                innerHTML: '<div style="width: 30px; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px;"></div>',
             },
             (instance) => {
                 // Setup resize functionality
@@ -4789,96 +4700,76 @@ function buildOverlayMain() {
             textContent: 'Upload Template',
             accept: 'image/png, image/jpeg, image/webp, image/bmp, image/gif',
         })
-        .addButton(
-            { id: 'bm-button-create', innerHTML: icons.createIcon + 'Create' },
-            (instance, button) => {
-                button.onclick = () => {
-                    const input = document.querySelector('#bm-input-file-template');
+        .addButton({ id: 'bm-button-create', innerHTML: icons.createIcon + 'Create' }, (instance, button) => {
+            button.onclick = () => {
+                const input = document.querySelector('#bm-input-file-template');
 
-                    const coordTlX = document.querySelector('#bm-input-tx');
-                    if (!coordTlX.checkValidity()) {
-                        coordTlX.reportValidity();
-                        instance.handleDisplayError(
-                            'Coordinates are malformed! Did you try clicking on the canvas first?',
-                        );
-                        return;
-                    }
-                    const coordTlY = document.querySelector('#bm-input-ty');
-                    if (!coordTlY.checkValidity()) {
-                        coordTlY.reportValidity();
-                        instance.handleDisplayError(
-                            'Coordinates are malformed! Did you try clicking on the canvas first?',
-                        );
-                        return;
-                    }
-                    const coordPxX = document.querySelector('#bm-input-px');
-                    if (!coordPxX.checkValidity()) {
-                        coordPxX.reportValidity();
-                        instance.handleDisplayError(
-                            'Coordinates are malformed! Did you try clicking on the canvas first?',
-                        );
-                        return;
-                    }
-                    const coordPxY = document.querySelector('#bm-input-py');
-                    if (!coordPxY.checkValidity()) {
-                        coordPxY.reportValidity();
-                        instance.handleDisplayError(
-                            'Coordinates are malformed! Did you try clicking on the canvas first?',
-                        );
-                        return;
-                    }
+                const coordTlX = document.querySelector('#bm-input-tx');
+                if (!coordTlX.checkValidity()) {
+                    coordTlX.reportValidity();
+                    instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
+                    return;
+                }
+                const coordTlY = document.querySelector('#bm-input-ty');
+                if (!coordTlY.checkValidity()) {
+                    coordTlY.reportValidity();
+                    instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
+                    return;
+                }
+                const coordPxX = document.querySelector('#bm-input-px');
+                if (!coordPxX.checkValidity()) {
+                    coordPxX.reportValidity();
+                    instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
+                    return;
+                }
+                const coordPxY = document.querySelector('#bm-input-py');
+                if (!coordPxY.checkValidity()) {
+                    coordPxY.reportValidity();
+                    instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
+                    return;
+                }
 
-                    // Kills itself if there is no file
-                    if (!input?.files[0]) {
-                        instance.handleDisplayError(`No file selected!`);
-                        return;
-                    }
+                // Kills itself if there is no file
+                if (!input?.files[0]) {
+                    instance.handleDisplayError(`No file selected!`);
+                    return;
+                }
 
-                    templateManager.createTemplate(
-                        input.files[0],
-                        input.files[0]?.name.replace(/\.[^/.]+$/, ''),
-                        [
-                            Number(coordTlX.value),
-                            Number(coordTlY.value),
-                            Number(coordPxX.value),
-                            Number(coordPxY.value),
-                        ],
-                    );
+                templateManager.createTemplate(input.files[0], input.files[0]?.name.replace(/\.[^/.]+$/, ''), [
+                    Number(coordTlX.value),
+                    Number(coordTlY.value),
+                    Number(coordPxX.value),
+                    Number(coordPxY.value),
+                ]);
 
-                    // Invalidate cache after template creation
-                    invalidateTemplateCache();
+                // Invalidate cache after template creation
+                invalidateTemplateCache();
 
-                    // Update mini tracker after template creation
-                    setTimeout(() => {
-                        updateMiniTracker();
-                        updateColorMenuDisplay(false, true); // Force update without resetting filters
-                    }, 500);
+                // Update mini tracker after template creation
+                setTimeout(() => {
+                    updateMiniTracker();
+                    updateColorMenuDisplay(false, true); // Force update without resetting filters
+                }, 500);
 
-                    // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
-                    // apiManager.templateCoordsTilePixel = apiManager.coordsTilePixel; // Update template coords
-                    // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
-                    // templateManager.setTemplateImage(input.files[0]);
+                // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
+                // apiManager.templateCoordsTilePixel = apiManager.coordsTilePixel; // Update template coords
+                // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
+                // templateManager.setTemplateImage(input.files[0]);
 
-                    instance.handleDisplayStatus(`Drew to canvas!`);
-                };
-            },
-        )
+                instance.handleDisplayStatus(`Drew to canvas!`);
+            };
+        })
         .buildElement()
-        .addButton(
-            { id: 'bm-button-manage', innerHTML: icons.manageIcon + 'Manage' },
-            (instance, button) => {
-                button.onclick = () => {
-                    showTemplateManageDialog(instance);
-                };
-            },
-        )
+        .addButton({ id: 'bm-button-manage', innerHTML: icons.manageIcon + 'Manage' }, (instance, button) => {
+            button.onclick = () => {
+                showTemplateManageDialog(instance);
+            };
+        })
         .buildElement()
         .addButton(
             {
                 id: 'bm-button-pause-tiles',
-                innerHTML:
-                    (isTileRefreshPaused() ? icons.playIcon : icons.pauseIcon) +
-                    (isTileRefreshPaused() ? 'Resume' : 'Pause'),
+                innerHTML: (isTileRefreshPaused() ? icons.playIcon : icons.pauseIcon) + (isTileRefreshPaused() ? 'Resume' : 'Pause'),
             },
             (instance, button) => {
                 // Set initial CSS class based on current pause state
@@ -4907,14 +4798,11 @@ function buildOverlayMain() {
             },
         )
         .buildElement()
-        .addButton(
-            { id: 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter' },
-            (instance, button) => {
-                button.onclick = () => {
-                    buildColorFilterOverlay();
-                };
-            },
-        )
+        .addButton({ id: 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter' }, (instance, button) => {
+            button.onclick = () => {
+                buildColorFilterOverlay();
+            };
+        })
         .buildElement()
         .buildElement() // Close bm-contain-buttons-template
         .addTextarea({
@@ -4937,29 +4825,19 @@ function buildOverlayMain() {
             },
             (instance, button) => {
                 button.addEventListener('click', () => {
-                    window.open(
-                        'https://pepoafonso.github.io/color_converter_wplace/',
-                        '_blank',
-                        'noopener noreferrer',
-                    );
+                    window.open('https://pepoafonso.github.io/color_converter_wplace/', '_blank', 'noopener noreferrer');
                 });
             },
         )
         .buildElement()
-        .addButton(
-            { id: 'bm-search', className: 'bm-help', innerHTML: '🔍', title: 'Location Search' },
-            (instance, button) => {
-                button.addEventListener('click', () => {
-                    const searchPanel = document.getElementById('skirk-search-draggable');
-                    if (searchPanel) {
-                        searchPanel.style.display =
-                            searchPanel.style.display === 'none' || !searchPanel.style.display
-                                ? 'flex'
-                                : 'none';
-                    }
-                });
-            },
-        )
+        .addButton({ id: 'bm-search', className: 'bm-help', innerHTML: '🔍', title: 'Location Search' }, (instance, button) => {
+            button.addEventListener('click', () => {
+                const searchPanel = document.getElementById('skirk-search-draggable');
+                if (searchPanel) {
+                    searchPanel.style.display = searchPanel.style.display === 'none' || !searchPanel.style.display ? 'flex' : 'none';
+                }
+            });
+        })
         .buildElement()
         .addButton(
             {
@@ -4976,9 +4854,7 @@ function buildOverlayMain() {
                         let metersX = (tileX * 1000 + pixelX) * z - ys;
                         let metersY = ((ys - (tileY * 1000 + pixelY) * z) / ys) * 180;
 
-                        let lat =
-                            (180 / Math.PI) *
-                            (2 * Math.atan(Math.exp((metersY * Math.PI) / 180)) - Math.PI / 2);
+                        let lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((metersY * Math.PI) / 180)) - Math.PI / 2);
                         let lng = (metersX / ys) * 180;
                         return [lat, lng];
                     }
@@ -5017,19 +4893,10 @@ function buildOverlayMain() {
                         // SMART DETECTION: Get currently displayed template or first enabled template
                         let t = null;
 
-                        if (
-                            templateManager.smartDetectionEnabled &&
-                            templateManager.currentlyDisplayedTemplates.size === 1
-                        ) {
+                        if (templateManager.smartDetectionEnabled && templateManager.currentlyDisplayedTemplates.size === 1) {
                             // Use the currently displayed template for screenshot
-                            const displayedTemplateKey = Array.from(
-                                templateManager.currentlyDisplayedTemplates,
-                            )[0];
-                            t = templateManager.templatesArray.find(
-                                (template) =>
-                                    `${template.sortID} ${template.authorID}` ===
-                                    displayedTemplateKey,
-                            );
+                            const displayedTemplateKey = Array.from(templateManager.currentlyDisplayedTemplates)[0];
+                            t = templateManager.templatesArray.find((template) => `${template.sortID} ${template.authorID}` === displayedTemplateKey);
                         }
 
                         // Fallback: Use first enabled template
@@ -5055,19 +4922,12 @@ function buildOverlayMain() {
 
                         // Auto-detect coordinates from active template
                         if (!t.coords || t.coords.length !== 4) {
-                            instance.handleDisplayError(
-                                'Template coordinates not available. Create a template first.',
-                            );
+                            instance.handleDisplayError('Template coordinates not available. Create a template first.');
                             return;
                         }
 
                         const [tx, ty, px, py] = t.coords;
-                        if (
-                            !Number.isFinite(tx) ||
-                            !Number.isFinite(ty) ||
-                            !Number.isFinite(px) ||
-                            !Number.isFinite(py)
-                        ) {
+                        if (!Number.isFinite(tx) || !Number.isFinite(ty) || !Number.isFinite(px) || !Number.isFinite(py)) {
                             instance.handleDisplayError('Invalid template coordinates detected.');
                             return;
                         }
@@ -5082,8 +4942,7 @@ function buildOverlayMain() {
                                         maxScaledX = 0,
                                         maxScaledY = 0;
                                     const scale = templateManager.drawMult || 3;
-                                    const tileSizeScaled =
-                                        (templateManager.tileSize || 1000) * scale;
+                                    const tileSizeScaled = (templateManager.tileSize || 1000) * scale;
                                     for (const key of tiles) {
                                         const bmp = t.chunked[key];
                                         const [tX, tY, pX, pY] = key.split(',').map(Number);
@@ -5102,23 +4961,15 @@ function buildOverlayMain() {
                             } catch (_) {}
                         }
                         if (!t.imageWidth || !t.imageHeight) {
-                            instance.handleDisplayError(
-                                'Template size unavailable; create or reload the template first.',
-                            );
+                            instance.handleDisplayError('Template size unavailable; create or reload the template first.');
                             return;
                         }
                         const base = apiManager?.tileServerBase;
                         if (!base) {
-                            instance.handleDisplayError(
-                                'Tile server not detected yet; open the board to load tiles.',
-                            );
+                            instance.handleDisplayError('Tile server not detected yet; open the board to load tiles.');
                             return;
                         }
-                        const blob = await templateManager.buildTemplateAreaScreenshot(
-                            base,
-                            [tx, ty, px, py],
-                            [t.imageWidth, t.imageHeight],
-                        );
+                        const blob = await templateManager.buildTemplateAreaScreenshot(base, [tx, ty, px, py], [t.imageWidth, t.imageHeight]);
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -5296,9 +5147,7 @@ function buildColorFilterOverlay() {
 
                             if (template.chunked) {
                                 for (const chunkKey of Object.keys(template.chunked)) {
-                                    const [chunkTileX, chunkTileY] = chunkKey
-                                        .split(',')
-                                        .map((coord) => parseInt(coord));
+                                    const [chunkTileX, chunkTileY] = chunkKey.split(',').map((coord) => parseInt(coord));
                                     if (chunkTileX === tileX && chunkTileY === tileY) {
                                         shouldIncludeTile = true;
                                         break;
@@ -5312,9 +5161,7 @@ function buildColorFilterOverlay() {
                     if (!shouldIncludeTile) continue;
 
                     if (tileStats.colorBreakdown) {
-                        for (const [colorKey, colorStats] of Object.entries(
-                            tileStats.colorBreakdown,
-                        )) {
+                        for (const [colorKey, colorStats] of Object.entries(tileStats.colorBreakdown)) {
                             // Skip excluded colors from wrong pixels calculation too
                             if (excludedColors.includes(colorKey)) {
                                 continue;
@@ -5605,14 +5452,12 @@ function buildColorFilterOverlay() {
             // Add hover effects but prevent them on touch devices
             settingsButton.onmouseover = () => {
                 settingsButton.style.transform = 'translateY(-1px) scale(1.05)';
-                settingsButton.style.background =
-                    'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+                settingsButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
                 settingsButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
             };
             settingsButton.onmouseout = () => {
                 settingsButton.style.transform = '';
-                settingsButton.style.background =
-                    'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                 settingsButton.style.boxShadow = '';
             };
 
@@ -5621,8 +5466,7 @@ function buildColorFilterOverlay() {
                 'touchstart',
                 () => {
                     settingsButton.style.transform = '';
-                    settingsButton.style.background =
-                        'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                    settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                     settingsButton.style.boxShadow = '';
                 },
                 { passive: true },
@@ -5658,14 +5502,12 @@ function buildColorFilterOverlay() {
             // Add hover effects but prevent them on touch devices
             viewToggleButton.onmouseover = () => {
                 viewToggleButton.style.transform = 'translateY(-1px) scale(1.05)';
-                viewToggleButton.style.background =
-                    'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+                viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
                 viewToggleButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
             };
             viewToggleButton.onmouseout = () => {
                 viewToggleButton.style.transform = '';
-                viewToggleButton.style.background =
-                    'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                 viewToggleButton.style.boxShadow = '';
             };
 
@@ -5674,8 +5516,7 @@ function buildColorFilterOverlay() {
                 'touchstart',
                 () => {
                     viewToggleButton.style.transform = '';
-                    viewToggleButton.style.background =
-                        'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                    viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                     viewToggleButton.style.boxShadow = '';
                 },
                 { passive: true },
@@ -5767,22 +5608,19 @@ function buildColorFilterOverlay() {
     `;
             compactListButton.onmouseover = () => {
                 compactListButton.style.transform = 'translateY(-1px) scale(1.05)';
-                compactListButton.style.background =
-                    'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+                compactListButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
                 compactListButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
             };
             compactListButton.onmouseout = () => {
                 compactListButton.style.transform = '';
-                compactListButton.style.background =
-                    'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                 compactListButton.style.boxShadow = '';
             };
             compactListButton.addEventListener(
                 'touchstart',
                 () => {
                     compactListButton.style.transform = '';
-                    compactListButton.style.background =
-                        'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                    compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                     compactListButton.style.boxShadow = '';
                 },
                 { passive: true },
@@ -5884,21 +5722,18 @@ function buildColorFilterOverlay() {
       cursor: pointer;
     `;
             includeWrongProgressContainer.onmouseover = () => {
-                includeWrongProgressContainer.style.background =
-                    'linear-gradient(135deg, var(--slate-750), var(--slate-700))';
+                includeWrongProgressContainer.style.background = 'linear-gradient(135deg, var(--slate-750), var(--slate-700))';
                 includeWrongProgressContainer.style.transform = 'translateY(-1px)';
             };
             includeWrongProgressContainer.onmouseout = () => {
-                includeWrongProgressContainer.style.background =
-                    'linear-gradient(135deg, var(--slate-800), var(--slate-750))';
+                includeWrongProgressContainer.style.background = 'linear-gradient(135deg, var(--slate-800), var(--slate-750))';
                 includeWrongProgressContainer.style.transform = '';
             };
 
             const includeWrongProgressCheckbox = document.createElement('input');
             includeWrongProgressCheckbox.type = 'checkbox';
             includeWrongProgressCheckbox.id = 'bm-include-wrong-progress';
-            includeWrongProgressCheckbox.checked =
-                templateManager.getIncludeWrongColorsInProgress();
+            includeWrongProgressCheckbox.checked = templateManager.getIncludeWrongColorsInProgress();
             includeWrongProgressCheckbox.style.cssText = `
       width: 18px;
       height: 18px;
@@ -5924,9 +5759,7 @@ function buildColorFilterOverlay() {
             includeWrongProgressCheckbox.addEventListener('change', async () => {
                 const enabled = includeWrongProgressCheckbox.checked;
                 await templateManager.setIncludeWrongColorsInProgress(enabled);
-                overlayMain.handleDisplayStatus(
-                    `Include wrong colors in progress ${enabled ? 'enabled' : 'disabled'}!`,
-                );
+                overlayMain.handleDisplayStatus(`Include wrong colors in progress ${enabled ? 'enabled' : 'disabled'}!`);
 
                 // Force refresh color filter overlay to update progress calculations immediately
                 buildColorFilterOverlay();
@@ -5937,8 +5770,7 @@ function buildColorFilterOverlay() {
 
             // Instructions
             const instructions = document.createElement('p');
-            instructions.textContent =
-                'Click on colors to toggle their visibility in the template.';
+            instructions.textContent = 'Click on colors to toggle their visibility in the template.';
             instructions.style.cssText = `
       margin: 0 0 24px 0; 
       font-size: 0.95em; 
@@ -6081,8 +5913,7 @@ function buildColorFilterOverlay() {
 
             searchInput.addEventListener('focus', () => {
                 searchInput.style.borderColor = 'var(--blue-500)';
-                searchInput.style.boxShadow =
-                    '0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15)';
+                searchInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15)';
             });
 
             searchInput.addEventListener('blur', () => {
@@ -6295,9 +6126,7 @@ function buildColorFilterOverlay() {
             enhanceWrongCheckbox.addEventListener('change', async () => {
                 const enabled = enhanceWrongCheckbox.checked;
                 await templateManager.setEnhanceWrongColors(enabled);
-                overlayMain.handleDisplayStatus(
-                    `Wrong colors crosshair ${enabled ? 'enabled' : 'disabled'}!`,
-                );
+                overlayMain.handleDisplayStatus(`Wrong colors crosshair ${enabled ? 'enabled' : 'disabled'}!`);
 
                 invalidateTemplateCache();
             });
@@ -6351,9 +6180,7 @@ function buildColorFilterOverlay() {
                 const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
                 const isFreeColor = colorInfo.free;
                 const isDisabled = currentTemplate.isColorDisabled(rgb);
-                const isEnhanced = currentTemplate.isColorEnhanced
-                    ? currentTemplate.isColorEnhanced(rgb)
-                    : false;
+                const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
 
                 // Add data attributes for search functionality
                 colorItem.setAttribute('data-color-item', 'true');
@@ -6522,13 +6349,8 @@ function buildColorFilterOverlay() {
       `;
 
                 // Check if color is excluded from progress (check both applied and pending)
-                const appliedExcluded = JSON.parse(
-                    localStorage.getItem('bmcf-excluded-colors') || '[]',
-                );
-                const pendingExcluded = JSON.parse(
-                    localStorage.getItem('bmcf-excluded-colors-pending') ||
-                        JSON.stringify(appliedExcluded),
-                );
+                const appliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+                const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(appliedExcluded));
                 const isExcluded = pendingExcluded.includes(colorKey);
 
                 if (isExcluded) {
@@ -6551,18 +6373,13 @@ function buildColorFilterOverlay() {
                     e.stopPropagation();
                     const pendingExcluded = JSON.parse(
                         localStorage.getItem('bmcf-excluded-colors-pending') ||
-                            JSON.stringify(
-                                JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]'),
-                            ),
+                            JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')),
                     );
 
                     if (pendingExcluded.includes(colorKey)) {
                         // Remove from pending excluded list
                         const newPendingExcluded = pendingExcluded.filter((c) => c !== colorKey);
-                        localStorage.setItem(
-                            'bmcf-excluded-colors-pending',
-                            JSON.stringify(newPendingExcluded),
-                        );
+                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
                         excludeIcon.textContent = '👁️';
                         excludeIcon.style.background = 'rgba(0,0,0,0.3)';
                         excludeIcon.style.opacity = '0.7';
@@ -6573,10 +6390,7 @@ function buildColorFilterOverlay() {
                     } else {
                         // Add to pending excluded list
                         pendingExcluded.push(colorKey);
-                        localStorage.setItem(
-                            'bmcf-excluded-colors-pending',
-                            JSON.stringify(pendingExcluded),
-                        );
+                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
                         excludeIcon.textContent = '🚫';
                         excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
                         excludeIcon.style.opacity = '1';
@@ -6620,9 +6434,7 @@ function buildColorFilterOverlay() {
 
                             if (enabledTemplateKeys.size > 0) {
                                 shouldIncludeTile = false;
-                                const [tileX, tileY] = tileKey
-                                    .split(',')
-                                    .map((coord) => parseInt(coord));
+                                const [tileX, tileY] = tileKey.split(',').map((coord) => parseInt(coord));
 
                                 for (const template of templateManager.templatesArray) {
                                     const templateKey = `${template.sortID} ${template.authorID}`;
@@ -6630,9 +6442,7 @@ function buildColorFilterOverlay() {
 
                                     if (template.chunked) {
                                         for (const chunkKey of Object.keys(template.chunked)) {
-                                            const [chunkTileX, chunkTileY] = chunkKey
-                                                .split(',')
-                                                .map((coord) => parseInt(coord));
+                                            const [chunkTileX, chunkTileY] = chunkKey.split(',').map((coord) => parseInt(coord));
                                             if (chunkTileX === tileX && chunkTileY === tileY) {
                                                 shouldIncludeTile = true;
                                                 break;
@@ -6646,8 +6456,7 @@ function buildColorFilterOverlay() {
                             if (!shouldIncludeTile) continue;
 
                             if (tileStats.colorBreakdown && tileStats.colorBreakdown[colorKey]) {
-                                wrongPixelsForColor +=
-                                    tileStats.colorBreakdown[colorKey].wrong || 0;
+                                wrongPixelsForColor += tileStats.colorBreakdown[colorKey].wrong || 0;
                             }
                         }
                     }
@@ -6678,10 +6487,7 @@ function buildColorFilterOverlay() {
 
                     // Always render full stats inside the Template Color overlay
                     let displayText = `${displayPainted.toLocaleString()}/${displayRequired.toLocaleString()} (${displayPercentage}%)`;
-                    if (
-                        templateManager.getIncludeWrongColorsInProgress() &&
-                        wrongPixelsForColor > 0
-                    ) {
+                    if (templateManager.getIncludeWrongColorsInProgress() && wrongPixelsForColor > 0) {
                         displayText += `\n+${wrongPixelsForColor.toLocaleString()} wrong`;
                     }
                     pixelStatsDisplay.innerHTML = `
@@ -6729,9 +6535,7 @@ function buildColorFilterOverlay() {
           </div>
         `;
 
-                    debugLog(
-                        `[Color Filter] Color ${colorInfo.name} (${colorKey}) not used in template`,
-                    );
+                    debugLog(`[Color Filter] Color ${colorInfo.name} (${colorKey}) not used in template`);
                 }
 
                 pixelStatsDisplay.style.cssText = `
@@ -6762,9 +6566,7 @@ function buildColorFilterOverlay() {
                     if (wasDisabled) {
                         currentTemplate.enableColor(rgb);
                         colorItem.style.border = '3px solid #4caf50';
-                        const overlay = colorClickArea.querySelector(
-                            'div[style*="position: absolute"]',
-                        );
+                        const overlay = colorClickArea.querySelector('div[style*="position: absolute"]');
                         if (overlay) overlay.remove();
                         enhancedCheckbox.disabled = false;
 
@@ -6855,22 +6657,10 @@ function buildColorFilterOverlay() {
 
                 // Copy stats data attributes from grid item to list item
                 if (colorItem.hasAttribute('data-wrong-count')) {
-                    listItem.setAttribute(
-                        'data-wrong-count',
-                        colorItem.getAttribute('data-wrong-count'),
-                    );
-                    listItem.setAttribute(
-                        'data-missing-count',
-                        colorItem.getAttribute('data-missing-count'),
-                    );
-                    listItem.setAttribute(
-                        'data-total-count',
-                        colorItem.getAttribute('data-total-count'),
-                    );
-                    listItem.setAttribute(
-                        'data-painted-count',
-                        colorItem.getAttribute('data-painted-count'),
-                    );
+                    listItem.setAttribute('data-wrong-count', colorItem.getAttribute('data-wrong-count'));
+                    listItem.setAttribute('data-missing-count', colorItem.getAttribute('data-missing-count'));
+                    listItem.setAttribute('data-total-count', colorItem.getAttribute('data-total-count'));
+                    listItem.setAttribute('data-painted-count', colorItem.getAttribute('data-painted-count'));
                 }
 
                 listItem.style.cssText = `
@@ -6957,10 +6747,7 @@ function buildColorFilterOverlay() {
                 const wrongCount = parseInt(listItem.getAttribute('data-wrong-count') || '0');
 
                 if (totalCount > 0) {
-                    const percentage =
-                        totalCount > 0
-                            ? Math.round(((totalCount - missingCount) / totalCount) * 100)
-                            : 0;
+                    const percentage = totalCount > 0 ? Math.round(((totalCount - missingCount) / totalCount) * 100) : 0;
                     mainStatsText = `${paintedCount.toLocaleString()}/${totalCount.toLocaleString()} (${percentage}%)`;
                     // Add wrong pixels display if they exist and wrong colors are included in progress
                     if (templateManager.getIncludeWrongColorsInProgress() && wrongCount > 0) {
@@ -7101,13 +6888,8 @@ function buildColorFilterOverlay() {
                             const targetColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
                             if (btnBg === targetColor) {
                                 btn.click();
-                                if (
-                                    typeof overlayMain !== 'undefined' &&
-                                    overlayMain.handleDisplayStatus
-                                ) {
-                                    overlayMain.handleDisplayStatus(
-                                        `Selected color: ${colorInfo.name}`,
-                                    );
+                                if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+                                    overlayMain.handleDisplayStatus(`Selected color: ${colorInfo.name}`);
                                 }
                             }
                         });
@@ -7119,8 +6901,7 @@ function buildColorFilterOverlay() {
                 // Exclude from progress icon for list view
                 const listExcludeIcon = document.createElement('div');
                 listExcludeIcon.textContent = '👁️';
-                listExcludeIcon.title =
-                    'Click to exclude/include this color from progress calculation';
+                listExcludeIcon.title = 'Click to exclude/include this color from progress calculation';
                 listExcludeIcon.style.cssText = `
         font-size: 14px;
         cursor: pointer;
@@ -7136,13 +6917,8 @@ function buildColorFilterOverlay() {
       `;
 
                 // Check if color is excluded (check pending changes)
-                const listAppliedExcluded = JSON.parse(
-                    localStorage.getItem('bmcf-excluded-colors') || '[]',
-                );
-                const listPendingExcluded = JSON.parse(
-                    localStorage.getItem('bmcf-excluded-colors-pending') ||
-                        JSON.stringify(listAppliedExcluded),
-                );
+                const listAppliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+                const listPendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(listAppliedExcluded));
                 const listIsExcluded = listPendingExcluded.includes(colorKey);
 
                 if (listIsExcluded) {
@@ -7165,18 +6941,13 @@ function buildColorFilterOverlay() {
                     e.stopPropagation();
                     const pendingExcluded = JSON.parse(
                         localStorage.getItem('bmcf-excluded-colors-pending') ||
-                            JSON.stringify(
-                                JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]'),
-                            ),
+                            JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')),
                     );
 
                     if (pendingExcluded.includes(colorKey)) {
                         // Remove from pending excluded list
                         const newPendingExcluded = pendingExcluded.filter((c) => c !== colorKey);
-                        localStorage.setItem(
-                            'bmcf-excluded-colors-pending',
-                            JSON.stringify(newPendingExcluded),
-                        );
+                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
                         listExcludeIcon.textContent = '👁️';
                         listExcludeIcon.style.background = 'rgba(0,0,0,0.3)';
                         listExcludeIcon.style.opacity = '0.7';
@@ -7187,10 +6958,7 @@ function buildColorFilterOverlay() {
                     } else {
                         // Add to pending excluded list
                         pendingExcluded.push(colorKey);
-                        localStorage.setItem(
-                            'bmcf-excluded-colors-pending',
-                            JSON.stringify(pendingExcluded),
-                        );
+                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
                         listExcludeIcon.textContent = '🚫';
                         listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
                         listExcludeIcon.style.opacity = '1';
@@ -7233,9 +7001,7 @@ function buildColorFilterOverlay() {
                         // Sync to grid item
                         isSyncing = true;
                         colorItem.style.border = '3px solid #4caf50';
-                        const gridOverlay = colorClickArea.querySelector(
-                            'div[style*="position: absolute"]',
-                        );
+                        const gridOverlay = colorClickArea.querySelector('div[style*="position: absolute"]');
                         if (gridOverlay) gridOverlay.remove();
                         enhancedCheckbox.disabled = false;
                         isSyncing = false;
@@ -7347,12 +7113,8 @@ function buildColorFilterOverlay() {
                             const bRgb = b.getAttribute('data-color-rgb');
 
                             // Find colors in utils.colorpalette
-                            const aColor = colorPalette.find(
-                                (c) => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === aRgb,
-                            );
-                            const bColor = colorPalette.find(
-                                (c) => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === bRgb,
-                            );
+                            const aColor = colorPalette.find((c) => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === aRgb);
+                            const bColor = colorPalette.find((c) => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === bRgb);
 
                             const aIsPremium = aColor && aColor.free === false;
                             const bIsPremium = bColor && bColor.free === false;
@@ -7708,13 +7470,11 @@ function buildColorFilterOverlay() {
       border-radius: 4px;
       transition: all 0.15s ease;
     `;
-                compactCloseBtn.onmouseover = () =>
-                    (compactCloseBtn.style.background = 'var(--slate-600)');
+                compactCloseBtn.onmouseover = () => (compactCloseBtn.style.background = 'var(--slate-600)');
                 compactCloseBtn.onmouseout = () => (compactCloseBtn.style.background = 'none');
                 compactCloseBtn.onclick = () => {
                     compactList.style.display = 'none';
-                    compactListButton.style.background =
-                        'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                    compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                 };
 
                 compactHeader.appendChild(compactLeftSection);
@@ -7917,14 +7677,8 @@ function buildColorFilterOverlay() {
       transition: all 0.2s ease;
       font-weight: 500;
     `;
-                disableAllBtn.addEventListener(
-                    'mouseenter',
-                    () => (disableAllBtn.style.background = '#b91c1c'),
-                );
-                disableAllBtn.addEventListener(
-                    'mouseleave',
-                    () => (disableAllBtn.style.background = '#dc2626'),
-                );
+                disableAllBtn.addEventListener('mouseenter', () => (disableAllBtn.style.background = '#b91c1c'));
+                disableAllBtn.addEventListener('mouseleave', () => (disableAllBtn.style.background = '#dc2626'));
 
                 const enableAllBtn = document.createElement('button');
                 enableAllBtn.textContent = 'Enable';
@@ -7939,14 +7693,8 @@ function buildColorFilterOverlay() {
       transition: all 0.2s ease;
       font-weight: 500;
     `;
-                enableAllBtn.addEventListener(
-                    'mouseenter',
-                    () => (enableAllBtn.style.background = '#15803d'),
-                );
-                enableAllBtn.addEventListener(
-                    'mouseleave',
-                    () => (enableAllBtn.style.background = '#16a34a'),
-                );
+                enableAllBtn.addEventListener('mouseenter', () => (enableAllBtn.style.background = '#15803d'));
+                enableAllBtn.addEventListener('mouseleave', () => (enableAllBtn.style.background = '#16a34a'));
 
                 // Add click handlers usando a lógica que já existe
                 disableAllBtn.addEventListener('click', () => {
@@ -8182,12 +7930,8 @@ function buildColorFilterOverlay() {
                                 item.style.display = 'flex';
                             });
                             sortedItems.sort((a, b) => {
-                                const nameA = a
-                                    .querySelector('.bmcf-compact-name div')
-                                    .textContent.toLowerCase();
-                                const nameB = b
-                                    .querySelector('.bmcf-compact-name div')
-                                    .textContent.toLowerCase();
+                                const nameA = a.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
+                                const nameB = b.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
                                 return nameA.localeCompare(nameB);
                             });
                             break;
@@ -8203,14 +7947,10 @@ function buildColorFilterOverlay() {
 
                                 // Find colors in utils.colorpalette
                                 const colorA = utils.colorpalette.find(
-                                    (c) =>
-                                        c.name !== 'Transparent' &&
-                                        `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA,
+                                    (c) => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA,
                                 );
                                 const colorB = utils.colorpalette.find(
-                                    (c) =>
-                                        c.name !== 'Transparent' &&
-                                        `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB,
+                                    (c) => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB,
                                 );
 
                                 const isPremiumA = colorA && colorA.free === false;
@@ -8221,12 +7961,8 @@ function buildColorFilterOverlay() {
                                 if (!isPremiumA && isPremiumB) return 1;
 
                                 // If both are premium or both are free, sort by most pixels missing
-                                const remainingA = parseInt(
-                                    a.getAttribute('data-remaining') || '0',
-                                );
-                                const remainingB = parseInt(
-                                    b.getAttribute('data-remaining') || '0',
-                                );
+                                const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+                                const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
                                 const totalA = parseInt(a.getAttribute('data-total') || '0');
                                 const totalB = parseInt(b.getAttribute('data-total') || '0');
 
@@ -8245,12 +7981,8 @@ function buildColorFilterOverlay() {
                                 item.style.display = 'flex';
                             });
                             sortedItems.sort((a, b) => {
-                                const remainingA = parseInt(
-                                    a.getAttribute('data-remaining') || '0',
-                                );
-                                const remainingB = parseInt(
-                                    b.getAttribute('data-remaining') || '0',
-                                );
+                                const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+                                const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
                                 const totalA = parseInt(a.getAttribute('data-total') || '0');
                                 const totalB = parseInt(b.getAttribute('data-total') || '0');
 
@@ -8269,12 +8001,8 @@ function buildColorFilterOverlay() {
                                 item.style.display = 'flex';
                             });
                             sortedItems.sort((a, b) => {
-                                const remainingA = parseInt(
-                                    a.getAttribute('data-remaining') || '0',
-                                );
-                                const remainingB = parseInt(
-                                    b.getAttribute('data-remaining') || '0',
-                                );
+                                const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+                                const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
                                 const totalA = parseInt(a.getAttribute('data-total') || '0');
                                 const totalB = parseInt(b.getAttribute('data-total') || '0');
 
@@ -8293,12 +8021,8 @@ function buildColorFilterOverlay() {
                                 item.style.display = 'flex';
                             });
                             sortedItems.sort((a, b) => {
-                                const remainingA = parseInt(
-                                    a.getAttribute('data-remaining') || '0',
-                                );
-                                const remainingB = parseInt(
-                                    b.getAttribute('data-remaining') || '0',
-                                );
+                                const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+                                const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
                                 return remainingB - remainingA; // Descending (more remaining first)
                             });
                             break;
@@ -8309,12 +8033,8 @@ function buildColorFilterOverlay() {
                                 item.style.display = 'flex';
                             });
                             sortedItems.sort((a, b) => {
-                                const progressA = parseFloat(
-                                    a.getAttribute('data-progress') || '0',
-                                );
-                                const progressB = parseFloat(
-                                    b.getAttribute('data-progress') || '0',
-                                );
+                                const progressA = parseFloat(a.getAttribute('data-progress') || '0');
+                                const progressB = parseFloat(b.getAttribute('data-progress') || '0');
                                 return progressB - progressA; // Descending (higher progress first)
                             });
                             break;
@@ -8365,8 +8085,7 @@ function buildColorFilterOverlay() {
                             });
                             // Filter to show only enhanced colors
                             sortedItems.forEach((item) => {
-                                const isEnhanced =
-                                    item.querySelector('input[type="checkbox"]').checked;
+                                const isEnhanced = item.querySelector('input[type="checkbox"]').checked;
                                 item.style.display = isEnhanced ? 'flex' : 'none';
                             });
                             break;
@@ -8379,12 +8098,8 @@ function buildColorFilterOverlay() {
                             });
                             // Sort by original index
                             sortedItems.sort((a, b) => {
-                                const indexA = parseInt(
-                                    a.getAttribute('data-original-index') || '0',
-                                );
-                                const indexB = parseInt(
-                                    b.getAttribute('data-original-index') || '0',
-                                );
+                                const indexA = parseInt(a.getAttribute('data-original-index') || '0');
+                                const indexB = parseInt(b.getAttribute('data-original-index') || '0');
                                 return indexA - indexB;
                             });
                             break;
@@ -8423,16 +8138,13 @@ function buildColorFilterOverlay() {
 
                     // Check if color is currently disabled in template
                     const templateInstance = templateManager.templatesArray?.[0];
-                    const isDisabled = templateInstance
-                        ? templateInstance.isColorDisabled(color.rgb)
-                        : false;
+                    const isDisabled = templateInstance ? templateInstance.isColorDisabled(color.rgb) : false;
 
                     // Get progress data first
                     const painted = stats.painted || 0;
                     const remaining = stats.needsCrosshair || 0;
                     const totalPixels = painted + remaining; // Real total = painted + remaining
-                    const progressPercent =
-                        totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
+                    const progressPercent = totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
 
                     const item = document.createElement('div');
                     item.className = 'bmcf-compact-item';
@@ -8526,20 +8238,14 @@ function buildColorFilterOverlay() {
                             overlayMain.handleDisplayStatus(`Enhanced mode enabled: ${color.name}`);
                         } else {
                             currentTemplate.disableColorEnhanced(color.rgb);
-                            overlayMain.handleDisplayStatus(
-                                `Enhanced mode disabled: ${color.name}`,
-                            );
+                            overlayMain.handleDisplayStatus(`Enhanced mode disabled: ${color.name}`);
                         }
 
                         invalidateTemplateCache();
 
                         // Sync with main overlay checkboxes
-                        const gridItem = colorViewContainer.querySelector(
-                            `[data-color-rgb="${colorKey}"]`,
-                        );
-                        const listItem = colorViewContainer.querySelector(
-                            `[data-color-rgb="${colorKey}"].bmcf-list-item`,
-                        );
+                        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+                        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
 
                         if (gridItem) {
                             const gridCheckbox = gridItem.querySelector('input[type="checkbox"]');
@@ -8553,10 +8259,7 @@ function buildColorFilterOverlay() {
 
                         // Refresh template display to save changes persistently
                         refreshTemplateDisplay().catch((error) => {
-                            console.error(
-                                'Error refreshing enhanced mode from Color Toggle:',
-                                error,
-                            );
+                            console.error('Error refreshing enhanced mode from Color Toggle:', error);
                         });
                     };
 
@@ -8602,12 +8305,8 @@ function buildColorFilterOverlay() {
                         const wasDisabled = currentTemplate.isColorDisabled(rgb);
 
                         // Find the corresponding grid/list items for visual sync
-                        const gridItem = colorViewContainer.querySelector(
-                            `[data-color-rgb="${colorKey}"]`,
-                        );
-                        const listItem = colorViewContainer.querySelector(
-                            `[data-color-rgb="${colorKey}"].bmcf-list-item`,
-                        );
+                        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+                        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
 
                         if (wasDisabled) {
                             // Enable the color
@@ -8616,12 +8315,9 @@ function buildColorFilterOverlay() {
                             // Update grid item visual
                             if (gridItem) {
                                 gridItem.style.border = '3px solid #4caf50';
-                                const overlay = gridItem.querySelector(
-                                    'div[style*="position: absolute"]',
-                                );
+                                const overlay = gridItem.querySelector('div[style*="position: absolute"]');
                                 if (overlay) overlay.remove();
-                                const enhancedCheckbox =
-                                    gridItem.querySelector('input[type="checkbox"]');
+                                const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
                                 if (enhancedCheckbox) enhancedCheckbox.disabled = false;
                             }
 
@@ -8629,8 +8325,7 @@ function buildColorFilterOverlay() {
                             if (listItem) {
                                 listItem.style.border = '2px solid #4caf50';
                                 listItem.style.opacity = '1';
-                                const listEnhancedCheckbox =
-                                    listItem.querySelector('input[type="checkbox"]');
+                                const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
                                 if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = false;
                             }
 
@@ -8647,15 +8342,8 @@ function buildColorFilterOverlay() {
                             if (gridItem) {
                                 gridItem.style.border = '3px solid #f44336';
                                 // Add disabled overlay
-                                const colorClickArea = gridItem.querySelector(
-                                    '[style*="cursor: pointer"]',
-                                );
-                                if (
-                                    colorClickArea &&
-                                    !colorClickArea.querySelector(
-                                        'div[style*="position: absolute"]',
-                                    )
-                                ) {
+                                const colorClickArea = gridItem.querySelector('[style*="cursor: pointer"]');
+                                if (colorClickArea && !colorClickArea.querySelector('div[style*="position: absolute"]')) {
                                     const disabledOverlay = document.createElement('div');
                                     disabledOverlay.style.cssText = `
                 position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -8665,8 +8353,7 @@ function buildColorFilterOverlay() {
                                     disabledOverlay.textContent = '✕';
                                     colorClickArea.appendChild(disabledOverlay);
                                 }
-                                const enhancedCheckbox =
-                                    gridItem.querySelector('input[type="checkbox"]');
+                                const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
                                 if (enhancedCheckbox) enhancedCheckbox.disabled = true;
                             }
 
@@ -8674,8 +8361,7 @@ function buildColorFilterOverlay() {
                             if (listItem) {
                                 listItem.style.border = '2px solid #f44336';
                                 listItem.style.opacity = '0.5';
-                                const listEnhancedCheckbox =
-                                    listItem.querySelector('input[type="checkbox"]');
+                                const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
                                 if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = true;
                             }
 
@@ -8690,19 +8376,13 @@ function buildColorFilterOverlay() {
 
                         // Update progress display after the toggle
                         setTimeout(() => {
-                            const freshStats = templateManager.calculateRemainingPixelsByColor(
-                                0,
-                                true,
-                            ); // Only enabled templates
+                            const freshStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
                             const freshPainted = freshStats[colorKey]?.painted || 0;
                             const freshRemaining = freshStats[colorKey]?.needsCrosshair || 0;
 
                             // Update the progress line in the name element
                             const freshTotalPixels = freshPainted + freshRemaining;
-                            const freshProgressPercent =
-                                freshTotalPixels > 0
-                                    ? Math.round((freshPainted / freshTotalPixels) * 100)
-                                    : 0;
+                            const freshProgressPercent = freshTotalPixels > 0 ? Math.round((freshPainted / freshTotalPixels) * 100) : 0;
 
                             name.innerHTML = `
             <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
@@ -8825,8 +8505,7 @@ function buildColorFilterOverlay() {
                         const painted = stats.painted || 0;
                         const remaining = stats.needsCrosshair || 0;
                         const totalPixels = painted + remaining;
-                        const progressPercent =
-                            totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
+                        const progressPercent = totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
 
                         // Update data attributes for sorting
                         item.setAttribute('data-remaining', remaining.toString());
@@ -8846,9 +8525,7 @@ function buildColorFilterOverlay() {
                         }
 
                         // Update visual state based on template
-                        const isDisabled = templateInstance
-                            ? templateInstance.isColorDisabled(color.rgb)
-                            : false;
+                        const isDisabled = templateInstance ? templateInstance.isColorDisabled(color.rgb) : false;
                         if (isDisabled) {
                             item.style.opacity = '0.5';
                             item.style.background = 'rgba(244, 67, 54, 0.1)';
@@ -8877,13 +8554,11 @@ function buildColorFilterOverlay() {
                     const isVisible = existingCompactList.style.display !== 'none';
                     if (isVisible) {
                         existingCompactList.style.display = 'none';
-                        compactListButton.style.background =
-                            'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                        compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                     } else {
                         existingCompactList.style.display = 'flex';
                         existingCompactList.style.flexDirection = 'column';
-                        compactListButton.style.background =
-                            'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+                        compactListButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
 
                         // Update the existing list with fresh data
                         updateCompactListData(existingCompactList);
@@ -8893,23 +8568,18 @@ function buildColorFilterOverlay() {
                     const isVisible = compactList.style.display !== 'none';
                     if (isVisible) {
                         compactList.style.display = 'none';
-                        compactListButton.style.background =
-                            'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+                        compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
                     } else {
                         compactList.style.display = 'flex';
                         compactList.style.flexDirection = 'column';
-                        compactListButton.style.background =
-                            'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+                        compactListButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
                     }
                 }
             };
 
             // Set up automatic updates for compact list
             const originalRefreshTemplateDisplay = window.refreshTemplateDisplay;
-            if (
-                originalRefreshTemplateDisplay &&
-                typeof originalRefreshTemplateDisplay === 'function'
-            ) {
+            if (originalRefreshTemplateDisplay && typeof originalRefreshTemplateDisplay === 'function') {
                 window.refreshTemplateDisplay = async function (...args) {
                     const result = await originalRefreshTemplateDisplay.apply(this, args);
 
@@ -9204,9 +8874,7 @@ function initializeKeyboardShortcuts() {
 
             // Show notification
             if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
-                overlayMain.handleDisplayStatus(
-                    '🎹 X-Mode: Click a color to enable enhanced mode for that color only',
-                );
+                overlayMain.handleDisplayStatus('🎹 X-Mode: Click a color to enable enhanced mode for that color only');
             }
 
             debugLog('🎹 [X-Mode] Enhanced selection mode ACTIVATED');
@@ -10117,18 +9785,13 @@ function updateMiniTracker() {
             return;
         }
         const isMainMinimized =
-            mainOverlay &&
-            (mainOverlay.style.width === '60px' ||
-                mainOverlay.style.height === '76px' ||
-                mainOverlay.style.width === '72px');
+            mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
 
         // Hide tracker if disabled OR if collapse is enabled and main is minimized
         if (!trackerEnabled || (collapseEnabled && isMainMinimized)) {
             if (existingTracker) {
                 existingTracker.remove();
-                debugLog(
-                    `Mini tracker hidden - ${!trackerEnabled ? 'disabled' : 'collapsed with main overlay'}`,
-                );
+                debugLog(`Mini tracker hidden - ${!trackerEnabled ? 'disabled' : 'collapsed with main overlay'}`);
             }
             return;
         }
@@ -10188,10 +9851,7 @@ function updateMiniTracker() {
                         mainOverlay.insertBefore(tracker, statusTextarea);
                     } else if (buttonsContainer.parentNode && buttonsContainer.nextSibling) {
                         // Fallback: insert after buttons container
-                        buttonsContainer.parentNode.insertBefore(
-                            tracker,
-                            buttonsContainer.nextSibling,
-                        );
+                        buttonsContainer.parentNode.insertBefore(tracker, buttonsContainer.nextSibling);
                     } else {
                         // Last resort: append to main overlay
                         mainOverlay.appendChild(tracker);
@@ -10210,10 +9870,7 @@ function updateMiniTracker() {
 
         // Style the tracker - COMPACT SLATE THEME (responsive to minimized state)
         const isMainMinimizedForStyle =
-            mainOverlay &&
-            (mainOverlay.style.width === '60px' ||
-                mainOverlay.style.height === '76px' ||
-                mainOverlay.style.width === '72px');
+            mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
 
         tracker.style.cssText = `
     background: linear-gradient(135deg, #1e293b, #334155);
@@ -10312,9 +9969,7 @@ function updateMiniTracker() {
         style.id = 'tracker-styles';
         document.head.appendChild(style);
 
-        debugLog(
-            `Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`,
-        );
+        debugLog(`Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`);
     } catch (error) {
         console.error('❌ Error updating mini tracker:', error);
         // Clean up any problematic tracker
@@ -10649,12 +10304,8 @@ function applyHeaderVisibility(key, visible) {
 function applyStoredOverlaySettings() {
     try {
         // Read settings from localStorage
-        const showInfoHeader = JSON.parse(
-            localStorage.getItem('bmShowInformationHeader') ?? 'true',
-        );
-        const showTemplateHeader = JSON.parse(
-            localStorage.getItem('bmShowTemplateHeader') ?? 'true',
-        );
+        const showInfoHeader = JSON.parse(localStorage.getItem('bmShowInformationHeader') ?? 'true');
+        const showTemplateHeader = JSON.parse(localStorage.getItem('bmShowTemplateHeader') ?? 'true');
         const showColorMenu = JSON.parse(localStorage.getItem('bmShowColorMenu') ?? 'false'); // Default: disabled (Beta)
 
         // Apply header visibility (fallback - usually handled during creation)
@@ -10800,9 +10451,7 @@ function updateColorMenuNumbers() {
         // Find color in palette to get RGB key
         import('./utils.js')
             .then((utils) => {
-                const colorInfo = utils.colorpalette.find(
-                    (c) => c.name.toLowerCase() === colorName,
-                );
+                const colorInfo = utils.colorpalette.find((c) => c.name.toLowerCase() === colorName);
                 if (!colorInfo) return;
 
                 const colorKey = `${colorInfo.rgb[0]},${colorInfo.rgb[1]},${colorInfo.rgb[2]}`;
@@ -10859,8 +10508,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
     const currentTemplate = templateManager?.templatesArray?.[0];
 
     if (!currentTemplate) {
-        colorList.innerHTML =
-            '<p style="margin: 0; color: #888; text-align: center;">No template loaded</p>';
+        colorList.innerHTML = '<p style="margin: 0; color: #888; text-align: center;">No template loaded</p>';
         return;
     }
 
@@ -10874,10 +10522,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
 
             const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true);
             debugLog('[Color Menu] Pixel statistics received:', pixelStats);
-            debugLog(
-                '[Color Menu] Pixel stats keys:',
-                pixelStats ? Object.keys(pixelStats) : 'null',
-            );
+            debugLog('[Color Menu] Pixel stats keys:', pixelStats ? Object.keys(pixelStats) : 'null');
 
             const disabledColors = new Set(currentTemplate.getDisabledColors?.() || []);
             const enhancedColors = currentTemplate.enhancedColors || new Set();
@@ -10998,8 +10643,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
 
                 // Color info - número laranja movido para DEPOIS da porcentagem
                 const info = document.createElement('div');
-                info.style.cssText =
-                    'flex: 1; overflow: hidden; cursor: pointer; min-width: 0; position: relative;';
+                info.style.cssText = 'flex: 1; overflow: hidden; cursor: pointer; min-width: 0; position: relative;';
 
                 info.innerHTML = `
         <div style="color: white; font-weight: 500; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: ${isPremium ? '18px' : '0'};">
@@ -11029,9 +10673,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
                     templateManager.updateTemplateWithColorFilter(0);
 
                     if (colorMenuCache.templateId) {
-                        const newDisabledColors = (currentTemplate.getDisabledColors?.() || [])
-                            .sort()
-                            .join(',');
+                        const newDisabledColors = (currentTemplate.getDisabledColors?.() || []).sort().join(',');
                         colorMenuCache.disabledColors = newDisabledColors;
                     }
 
@@ -11056,8 +10698,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
             // If no colors were added, show message
             if (colorList.children.length === 0) {
                 debugLog('[Color Menu] No colors in DOM - showing "no colors available" message');
-                colorList.innerHTML =
-                    '<p style="margin: 0; color: #888; text-align: center;">No template colors available</p>';
+                colorList.innerHTML = '<p style="margin: 0; color: #888; text-align: center;">No template colors available</p>';
                 return;
             }
 
@@ -11071,8 +10712,7 @@ function updateColorMenuDisplay(resetFilters = true, forceUpdate = false) {
         })
         .catch((error) => {
             console.error('[Color Menu] Failed to load utils:', error);
-            colorList.innerHTML =
-                '<p style="margin: 0; color: #f88; text-align: center;">Error loading colors</p>';
+            colorList.innerHTML = '<p style="margin: 0; color: #f88; text-align: center;">Error loading colors</p>';
         });
 }
 
@@ -11274,9 +10914,7 @@ function setupColorMenuFilters(resetFilters) {
             templateManager.updateTemplateWithColorFilter(0);
 
             if (colorMenuCache.templateId) {
-                const newDisabledColors = (currentTemplate.getDisabledColors?.() || [])
-                    .sort()
-                    .join(',');
+                const newDisabledColors = (currentTemplate.getDisabledColors?.() || []).sort().join(',');
                 colorMenuCache.disabledColors = newDisabledColors;
             }
 
@@ -11339,10 +10977,7 @@ function setupColorMenuFilters(resetFilters) {
         // Sort items
         filteredItems.sort((a, b) => {
             if (!sortBy || sortBy === 'default') {
-                return (
-                    parseInt(a.getAttribute('data-original-index') || '0') -
-                    parseInt(b.getAttribute('data-original-index') || '0')
-                );
+                return parseInt(a.getAttribute('data-original-index') || '0') - parseInt(b.getAttribute('data-original-index') || '0');
             }
 
             switch (sortBy) {
@@ -11351,53 +10986,27 @@ function setupColorMenuFilters(resetFilters) {
                     const bIsPremium = b.getAttribute('data-premium') === '1';
                     if (aIsPremium && !bIsPremium) return -1;
                     if (!aIsPremium && bIsPremium) return 1;
-                    return (
-                        parseInt(b.getAttribute('data-left') || '0') -
-                        parseInt(a.getAttribute('data-left') || '0')
-                    );
+                    return parseInt(b.getAttribute('data-left') || '0') - parseInt(a.getAttribute('data-left') || '0');
                 }
                 case 'most-wrong': {
-                    const aWrong =
-                        parseInt(a.getAttribute('data-total') || '0') -
-                        parseInt(a.getAttribute('data-painted') || '0');
-                    const bWrong =
-                        parseInt(b.getAttribute('data-total') || '0') -
-                        parseInt(b.getAttribute('data-painted') || '0');
+                    const aWrong = parseInt(a.getAttribute('data-total') || '0') - parseInt(a.getAttribute('data-painted') || '0');
+                    const bWrong = parseInt(b.getAttribute('data-total') || '0') - parseInt(b.getAttribute('data-painted') || '0');
                     return bWrong - aWrong;
                 }
                 case 'most-missing':
-                    return (
-                        parseInt(b.getAttribute('data-left') || '0') -
-                        parseInt(a.getAttribute('data-left') || '0')
-                    );
+                    return parseInt(b.getAttribute('data-left') || '0') - parseInt(a.getAttribute('data-left') || '0');
                 case 'less-missing':
-                    return (
-                        parseInt(a.getAttribute('data-left') || '0') -
-                        parseInt(b.getAttribute('data-left') || '0')
-                    );
+                    return parseInt(a.getAttribute('data-left') || '0') - parseInt(b.getAttribute('data-left') || '0');
                 case 'most-painted':
-                    return (
-                        parseInt(b.getAttribute('data-painted') || '0') -
-                        parseInt(a.getAttribute('data-painted') || '0')
-                    );
+                    return parseInt(b.getAttribute('data-painted') || '0') - parseInt(a.getAttribute('data-painted') || '0');
                 case 'less-painted':
-                    return (
-                        parseInt(a.getAttribute('data-painted') || '0') -
-                        parseInt(b.getAttribute('data-painted') || '0')
-                    );
+                    return parseInt(a.getAttribute('data-painted') || '0') - parseInt(b.getAttribute('data-painted') || '0');
                 case 'name-asc':
-                    return (a.getAttribute('data-name') || '').localeCompare(
-                        b.getAttribute('data-name') || '',
-                    );
+                    return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
                 case 'name-desc':
-                    return (b.getAttribute('data-name') || '').localeCompare(
-                        a.getAttribute('data-name') || '',
-                    );
+                    return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || '');
                 default:
-                    return (
-                        parseInt(a.getAttribute('data-original-index') || '0') -
-                        parseInt(b.getAttribute('data-original-index') || '0')
-                    );
+                    return parseInt(a.getAttribute('data-original-index') || '0') - parseInt(b.getAttribute('data-original-index') || '0');
             }
         });
 
@@ -11416,11 +11025,8 @@ function setupColorMenuFilters(resetFilters) {
             // Show "no results" message
             const noResults = document.createElement('p');
             noResults.className = 'bm-no-results';
-            noResults.style.cssText =
-                'margin: 8px 0; color: #888; text-align: center; font-size: 10px;';
-            noResults.textContent = searchTerm
-                ? 'No colors match your search'
-                : 'No colors available';
+            noResults.style.cssText = 'margin: 8px 0; color: #888; text-align: center; font-size: 10px;';
+            noResults.textContent = searchTerm ? 'No colors match your search' : 'No colors available';
             colorList.appendChild(noResults);
         }
     };
@@ -11543,12 +11149,7 @@ function buildCrosshairSettingsOverlay() {
         // If current color is custom, ensure it has the isCustom flag
         if (
             !tempColor.isCustom &&
-            !colorOptions
-                .filter((c) => !c.isCustom)
-                .some(
-                    (predefined) =>
-                        JSON.stringify(predefined.rgb) === JSON.stringify(tempColor.rgb),
-                )
+            !colorOptions.filter((c) => !c.isCustom).some((predefined) => JSON.stringify(predefined.rgb) === JSON.stringify(tempColor.rgb))
         ) {
             tempColor.isCustom = true;
             tempColor.name = 'Custom';
@@ -11687,8 +11288,7 @@ function buildCrosshairSettingsOverlay() {
 
         // Instructions
         const instructions = document.createElement('p');
-        instructions.textContent =
-            'Select the crosshair color that appears on highlighted template pixels:';
+        instructions.textContent = 'Select the crosshair color that appears on highlighted template pixels:';
         const instructionsMargin = isMobileMode ? '0 0 16px 0' : '0 0 24px 0';
         const instructionsFontSize = isMobileMode ? '0.9em' : '0.95em';
         instructions.style.cssText = `
@@ -11876,15 +11476,10 @@ function buildCrosshairSettingsOverlay() {
                     currentColor.isCustom ||
                     !colorOptions
                         .filter((c) => !c.isCustom)
-                        .some(
-                            (predefined) =>
-                                JSON.stringify(predefined.rgb) === JSON.stringify(currentColor.rgb),
-                        );
+                        .some((predefined) => JSON.stringify(predefined.rgb) === JSON.stringify(currentColor.rgb));
             } else {
                 // For predefined colors, check exact RGB match AND that current color is not custom
-                isSelected =
-                    JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb) &&
-                    !currentColor.isCustom;
+                isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb) && !currentColor.isCustom;
             }
 
             // Special handling for custom color button
@@ -12034,8 +11629,7 @@ function buildCrosshairSettingsOverlay() {
 
                     // Update preview
                     updateCrosshairPreview(tempColor, tempBorderEnabled);
-                    document.getElementById('bm-current-color-name').textContent =
-                        `Custom RGB(${r}, ${g}, ${b})`;
+                    document.getElementById('bm-current-color-name').textContent = `Custom RGB(${r}, ${g}, ${b})`;
                 };
 
                 // Add event listeners
@@ -12390,8 +11984,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         const radiusDescription = document.createElement('div');
-        radiusDescription.textContent =
-            'Control how far the crosshair extends from the center pixel';
+        radiusDescription.textContent = 'Control how far the crosshair extends from the center pixel';
         radiusDescription.style.cssText = `
     font-size: 0.9em; 
     margin-bottom: 16px; 
@@ -12545,8 +12138,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         const miniTrackerDescription = document.createElement('div');
-        miniTrackerDescription.textContent =
-            'Show a compact progress tracker below the Color Filter button.';
+        miniTrackerDescription.textContent = 'Show a compact progress tracker below the Color Filter button.';
         miniTrackerDescription.style.cssText = `
     font-size: 0.9em; 
     color: var(--slate-300); 
@@ -12583,9 +12175,7 @@ function buildCrosshairSettingsOverlay() {
             tempMiniTrackerEnabled = miniTrackerCheckbox.checked;
             miniTrackerToggleText.textContent = tempMiniTrackerEnabled ? 'Enabled' : 'Disabled';
             miniTrackerToggleText.style.color = tempMiniTrackerEnabled ? '#4caf50' : '#f44336';
-            debugLog(
-                `Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} (preview only)`,
-            );
+            debugLog(`Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} (preview only)`);
         };
 
         miniTrackerCheckbox.addEventListener('change', updateMiniTrackerState);
@@ -12729,9 +12319,7 @@ function buildCrosshairSettingsOverlay() {
             tempCollapseMinEnabled = collapseCheckbox.checked;
             collapseToggleText.textContent = tempCollapseMinEnabled ? 'Enabled' : 'Disabled';
             collapseToggleText.style.color = tempCollapseMinEnabled ? '#4caf50' : '#f44336';
-            debugLog(
-                `Collapse mini ${tempCollapseMinEnabled ? 'enabled' : 'disabled'} (preview only)`,
-            );
+            debugLog(`Collapse mini ${tempCollapseMinEnabled ? 'enabled' : 'disabled'} (preview only)`);
         };
 
         collapseCheckbox.addEventListener('change', updateCollapseState);
@@ -12888,8 +12476,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         const dragModeDescription = document.createElement('div');
-        dragModeDescription.textContent =
-            'Choose how to drag the overlay: full overlay (easier on mobile) or drag bar only (classic mode).';
+        dragModeDescription.textContent = 'Choose how to drag the overlay: full overlay (easier on mobile) or drag bar only (classic mode).';
         dragModeDescription.style.cssText = `
     color: var(--text-secondary);
     font-size: 12px;
@@ -12951,8 +12538,7 @@ function buildCrosshairSettingsOverlay() {
             saveDragModeEnabled(tempDragMode);
             applyDragMode(tempDragMode);
 
-            fullOverlayButton.style.background =
-                'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+            fullOverlayButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
             fullOverlayButton.style.color = 'white';
             dragBarButton.style.background = 'transparent';
             dragBarButton.style.color = 'var(--slate-300)';
@@ -12963,8 +12549,7 @@ function buildCrosshairSettingsOverlay() {
             saveDragModeEnabled(tempDragMode);
             applyDragMode(tempDragMode);
 
-            dragBarButton.style.background =
-                'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+            dragBarButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
             dragBarButton.style.color = 'white';
             fullOverlayButton.style.background = 'transparent';
             fullOverlayButton.style.color = 'var(--slate-300)';
@@ -13019,14 +12604,12 @@ function buildCrosshairSettingsOverlay() {
   `;
         cancelButton.onmouseover = () => {
             cancelButton.style.transform = 'translateY(-1px)';
-            cancelButton.style.background =
-                'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+            cancelButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
             cancelButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
         };
         cancelButton.onmouseout = () => {
             cancelButton.style.transform = '';
-            cancelButton.style.background =
-                'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+            cancelButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
             cancelButton.style.boxShadow = '';
         };
         cancelButton.onclick = () => {
@@ -13051,9 +12634,7 @@ function buildCrosshairSettingsOverlay() {
             if (hasChanges) {
                 if (confirm('Discard changes? Any unsaved settings will be lost.')) {
                     settingsOverlay.remove();
-                    overlayMain.handleDisplayStatus(
-                        'Crosshair settings cancelled - changes discarded',
-                    );
+                    overlayMain.handleDisplayStatus('Crosshair settings cancelled - changes discarded');
                 }
             } else {
                 settingsOverlay.remove();
@@ -13078,14 +12659,12 @@ function buildCrosshairSettingsOverlay() {
   `;
         applyButton.onmouseover = () => {
             applyButton.style.transform = 'translateY(-1px)';
-            applyButton.style.background =
-                'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+            applyButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
             applyButton.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
         };
         applyButton.onmouseout = () => {
             applyButton.style.transform = '';
-            applyButton.style.background =
-                'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+            applyButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
             applyButton.style.boxShadow = '';
         };
 
@@ -13095,8 +12674,7 @@ function buildCrosshairSettingsOverlay() {
             const originalText = applyButton.textContent;
 
             // Immediate click feedback
-            applyButton.style.background =
-                'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))';
+            applyButton.style.background = 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))';
             applyButton.textContent = 'Applying...';
             applyButton.style.transform = 'scale(0.95)';
             applyButton.disabled = true;
@@ -13150,8 +12728,7 @@ function buildCrosshairSettingsOverlay() {
                 }
 
                 // Success feedback
-                applyButton.style.background =
-                    'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
+                applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
                 applyButton.textContent = 'Applied! ✓';
 
                 // Update mini tracker visibility and restart auto-update
@@ -13297,27 +12874,13 @@ function buildCrosshairSettingsOverlay() {
         };
 
         // Add all checkboxes
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowInformationHeader', 'Information Header'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowTemplateHeader', 'Template Header'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowUsername', 'Username', 'bm-user-name'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowDroplets', 'Droplets', 'bm-user-droplets'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowNextLevel', 'Next Level', 'bm-user-nextlevel'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowFullCharge', 'Full Charge', 'bm-user-fullcharge'),
-        );
-        checkboxContainer.appendChild(
-            createVisibilityCheckbox('bmShowColorMenu', 'Color Menu (Beta Test)', 'bm-color-menu'),
-        );
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowInformationHeader', 'Information Header'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowTemplateHeader', 'Template Header'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowUsername', 'Username', 'bm-user-name'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowDroplets', 'Droplets', 'bm-user-droplets'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowNextLevel', 'Next Level', 'bm-user-nextlevel'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowFullCharge', 'Full Charge', 'bm-user-fullcharge'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowColorMenu', 'Color Menu (Beta Test)', 'bm-color-menu'));
 
         overlayVisibilitySection.appendChild(overlayVisibilityTitle);
         overlayVisibilitySection.appendChild(checkboxContainer);
@@ -13348,8 +12911,7 @@ function buildCrosshairSettingsOverlay() {
     letter-spacing: -0.01em;
   `;
         const leftOnColorDescription = document.createElement('div');
-        leftOnColorDescription.textContent =
-            'Displays just the remaining pixels number centered on each color.';
+        leftOnColorDescription.textContent = 'Displays just the remaining pixels number centered on each color.';
         leftOnColorDescription.style.cssText = `
     font-size: 0.9em; 
     color: var(--slate-300); 
@@ -13445,8 +13007,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         const navigationDescription = document.createElement('p');
-        navigationDescription.textContent =
-            'Choose how to navigate when clicking search results and favorites';
+        navigationDescription.textContent = 'Choose how to navigate when clicking search results and favorites';
         navigationDescription.style.cssText = `
     margin: 0 0 16px 0;
     color: var(--slate-400);
@@ -13505,8 +13066,7 @@ function buildCrosshairSettingsOverlay() {
 
         flytoButton.onclick = () => {
             tempNavigationMethod = 'flyto';
-            flytoButton.style.background =
-                'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+            flytoButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
             flytoButton.style.color = 'white';
             openurlButton.style.background = 'transparent';
             openurlButton.style.color = 'var(--slate-300)';
@@ -13514,8 +13074,7 @@ function buildCrosshairSettingsOverlay() {
 
         openurlButton.onclick = () => {
             tempNavigationMethod = 'openurl';
-            openurlButton.style.background =
-                'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+            openurlButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
             openurlButton.style.color = 'white';
             flytoButton.style.background = 'transparent';
             flytoButton.style.color = 'var(--slate-300)';
@@ -13552,8 +13111,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
         const cacheDescription = document.createElement('p');
-        cacheDescription.textContent =
-            'Cache processed tiles to reduce lag when revisiting areas. Automatically detects canvas changes.';
+        cacheDescription.textContent = 'Cache processed tiles to reduce lag when revisiting areas. Automatically detects canvas changes.';
         cacheDescription.style.cssText = `
     margin: 0 0 12px 0;
     color: var(--slate-400);
@@ -13788,10 +13346,7 @@ function buildCrosshairSettingsOverlay() {
         debugOffButton.onclick = () => {
             tempDebugEnabled = false;
             debugOffButton.style.cssText = debugOffButton.style.cssText
-                .replace(
-                    /background: [^;]+;/,
-                    'background: linear-gradient(135deg, var(--blue-500), var(--blue-600));',
-                )
+                .replace(/background: [^;]+;/, 'background: linear-gradient(135deg, var(--blue-500), var(--blue-600));')
                 .replace(/color: [^;]+;/, 'color: white;');
             debugOnButton.style.cssText = debugOnButton.style.cssText
                 .replace(/background: [^;]+;/, 'background: transparent;')
@@ -13801,10 +13356,7 @@ function buildCrosshairSettingsOverlay() {
         debugOnButton.onclick = () => {
             tempDebugEnabled = true;
             debugOnButton.style.cssText = debugOnButton.style.cssText
-                .replace(
-                    /background: [^;]+;/,
-                    'background: linear-gradient(135deg, var(--blue-500), var(--blue-600));',
-                )
+                .replace(/background: [^;]+;/, 'background: linear-gradient(135deg, var(--blue-500), var(--blue-600));')
                 .replace(/color: [^;]+;/, 'color: white;');
             debugOffButton.style.cssText = debugOffButton.style.cssText
                 .replace(/background: [^;]+;/, 'background: transparent;')
@@ -13915,9 +13467,7 @@ function createSearchWindow() {
     document.body.appendChild(searchPanel);
 
     // Close logic
-    searchPanel
-        .querySelector('#skirk-search-close')
-        .addEventListener('click', () => (searchPanel.style.display = 'none'));
+    searchPanel.querySelector('#skirk-search-close').addEventListener('click', () => (searchPanel.style.display = 'none'));
 
     // Favorites management
     const FAVORITES_KEY = 'bm-search-favorites';
@@ -13943,8 +13493,7 @@ function createSearchWindow() {
             return list;
         }
         return list.filter((fav) => {
-            const a =
-                `${fav.primaryName || ''} ${fav.secondaryInfo || ''} ${fav.fullAddress || ''}`.toLowerCase();
+            const a = `${fav.primaryName || ''} ${fav.secondaryInfo || ''} ${fav.fullAddress || ''}`.toLowerCase();
             return a.includes(query);
         });
     }
@@ -13960,9 +13509,7 @@ function createSearchWindow() {
 
     function addFavorite(location) {
         const favorites = getFavorites();
-        const exists = favorites.find(
-            (fav) => fav.lat === location.lat && fav.lon === location.lon,
-        );
+        const exists = favorites.find((fav) => fav.lat === location.lat && fav.lon === location.lon);
         if (!exists) {
             favorites.push(location);
             saveFavorites(favorites);
@@ -13997,8 +13544,7 @@ function createSearchWindow() {
             favoritesList.innerHTML = '';
 
             if (favorites.length === 0) {
-                favoritesList.innerHTML =
-                    '<div class="skirk-no-results">No favorites match your filter</div>';
+                favoritesList.innerHTML = '<div class="skirk-no-results">No favorites match your filter</div>';
                 return;
             }
 
@@ -14015,20 +13561,16 @@ function createSearchWindow() {
         `;
 
                 // Click to navigate
-                favoriteItem
-                    .querySelector('.skirk-result-content')
-                    .addEventListener('click', () => {
-                        navigateToLocation(favorite.lat, favorite.lon);
-                        searchPanel.style.display = 'none';
-                    });
+                favoriteItem.querySelector('.skirk-result-content').addEventListener('click', () => {
+                    navigateToLocation(favorite.lat, favorite.lon);
+                    searchPanel.style.display = 'none';
+                });
 
                 // Click to remove
-                favoriteItem
-                    .querySelector('.skirk-favorite-remove')
-                    .addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        removeFavorite(favorite.lat, favorite.lon);
-                    });
+                favoriteItem.querySelector('.skirk-favorite-remove').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeFavorite(favorite.lat, favorite.lon);
+                });
 
                 favoritesList.appendChild(favoriteItem);
             });
@@ -14417,10 +13959,7 @@ function createSearchWindow() {
                 const lonStr = e.currentTarget.parentElement.dataset.lon;
                 debugLog('=== NAVIGATION DEBUG ===');
                 debugLog('Clicking result with lat:', latStr, 'lon:', lonStr);
-                debugLog(
-                    'URL will be:',
-                    `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`,
-                );
+                debugLog('URL will be:', `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`);
 
                 if (latStr && lonStr && latStr !== 'undefined' && lonStr !== 'undefined') {
                     navigateToLocation(latStr, lonStr);
@@ -14472,8 +14011,7 @@ function createSearchWindow() {
             displayResults(results);
         } catch (error) {
             console.error('Search error:', error);
-            resultsContainer.innerHTML =
-                '<div class="skirk-no-results">Error searching. Please try again.</div>';
+            resultsContainer.innerHTML = '<div class="skirk-no-results">Error searching. Please try again.</div>';
         }
     }
 

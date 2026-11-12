@@ -36,11 +36,7 @@ export default class ApiManager {
 
             // Handle canvas change notifications
             if (data['source'] === 'blue-marble-canvas-change') {
-                debugLog(
-                    '[Canvas Change] Detected pixel placement request:',
-                    data['method'],
-                    data['endpoint'],
-                );
+                debugLog('[Canvas Change] Detected pixel placement request:', data['method'], data['endpoint']);
                 notifyCanvasChange();
                 return;
             }
@@ -75,15 +71,12 @@ export default class ApiManager {
                     if (dataJSON['status'] && dataJSON['status']?.toString()[0] != '2') {
                         // The server is probably down (NOT a 2xx status)
 
-                        overlay.handleDisplayError(
-                            `You are not logged in!\nCould not fetch userdata.`,
-                        );
+                        overlay.handleDisplayError(`You are not logged in!\nCould not fetch userdata.`);
                         return; // Kills itself before attempting to display null userdata
                     }
 
                     const nextLevelPixels = Math.ceil(
-                        Math.pow(Math.floor(dataJSON['level']) * Math.pow(30, 0.65), 1 / 0.65) -
-                            dataJSON['pixelsPainted'],
+                        Math.pow(Math.floor(dataJSON['level']) * Math.pow(30, 0.65), 1 / 0.65) - dataJSON['pixelsPainted'],
                     ); // Calculates pixels to the next level
 
                     debugLog(dataJSON['id']);
@@ -109,33 +102,22 @@ export default class ApiManager {
 
                     // Calculate time until next charge if available
                     if (this.userPaintData.nextChargeTime) {
-                        const nextChargeTimestamp = new Date(
-                            this.userPaintData.nextChargeTime,
-                        ).getTime();
+                        const nextChargeTimestamp = new Date(this.userPaintData.nextChargeTime).getTime();
                         const currentTime = Date.now();
-                        this.userPaintData.timeUntilNextCharge = Math.max(
-                            0,
-                            nextChargeTimestamp - currentTime,
-                        );
+                        this.userPaintData.timeUntilNextCharge = Math.max(0, nextChargeTimestamp - currentTime);
                     }
 
                     // Log paint data for debugging
                     debugLog('SpaceMarble: Paint Data:', this.userPaintData);
 
-                    overlay.updateInnerHTML(
-                        'bm-user-name-content',
-                        `<b>Username:</b> ${escapeHTML(dataJSON['name'])}`,
-                    ); // Updates the text content of the username field
+                    overlay.updateInnerHTML('bm-user-name-content', `<b>Username:</b> ${escapeHTML(dataJSON['name'])}`); // Updates the text content of the username field
                     try {
                         const show = JSON.parse(localStorage.getItem('bmShowUsername') ?? 'true');
                         const el = document.getElementById('bm-user-name');
                         if (el) el.style.display = show ? '' : 'none';
                     } catch (_) {}
 
-                    overlay.updateInnerHTML(
-                        'bm-user-droplets-content',
-                        `<b>Droplets:</b> ${new Intl.NumberFormat().format(dataJSON['droplets'])}`,
-                    ); // Updates the text content of the droplets field
+                    overlay.updateInnerHTML('bm-user-droplets-content', `<b>Droplets:</b> ${new Intl.NumberFormat().format(dataJSON['droplets'])}`); // Updates the text content of the droplets field
                     try {
                         const show = JSON.parse(localStorage.getItem('bmShowDroplets') ?? 'true');
                         const el = document.getElementById('bm-user-droplets');
@@ -165,13 +147,8 @@ export default class ApiManager {
                     const coordsPixel = [payloadExtractor.get('x'), payloadExtractor.get('y')]; // Retrieves the deconstructed pixel coords from the payload
 
                     // Don't save the coords if there are previous coords that could be used
-                    if (
-                        this.coordsTilePixel.length &&
-                        (!coordsTile.length || !coordsPixel.length)
-                    ) {
-                        overlay.handleDisplayError(
-                            `Coordinates are malformed!\nDid you try clicking the canvas first?`,
-                        );
+                    if (this.coordsTilePixel.length && (!coordsTile.length || !coordsPixel.length)) {
+                        overlay.handleDisplayError(`Coordinates are malformed!\nDid you try clicking the canvas first?`);
                         return; // Kills itself
                     }
 
@@ -182,9 +159,7 @@ export default class ApiManager {
 
                     // For every span element, find the one we want (pixel numbers when canvas clicked)
                     for (const element of spanElements) {
-                        if (
-                            element.textContent.trim().includes(`${displayTP[0]}, ${displayTP[1]}`)
-                        ) {
+                        if (element.textContent.trim().includes(`${displayTP[0]}, ${displayTP[1]}`)) {
                             let displayCoords = document.querySelector('#bm-display-coords'); // Find the additional pixel coords span
 
                             const text = `(Tl X: ${coordsTile[0]}, Tl Y: ${coordsTile[1]}, Px X: ${coordsPixel[0]}, Px Y: ${coordsPixel[1]})`;
@@ -194,12 +169,8 @@ export default class ApiManager {
                                 displayCoords = document.createElement('span');
                                 displayCoords.id = 'bm-display-coords';
                                 displayCoords.textContent = text;
-                                displayCoords.style =
-                                    'margin-left: calc(var(--spacing)*3); font-size: small;';
-                                element.parentNode.parentNode.parentNode.insertAdjacentElement(
-                                    'afterend',
-                                    displayCoords,
-                                );
+                                displayCoords.style = 'margin-left: calc(var(--spacing)*3); font-size: small;';
+                                element.parentNode.parentNode.parentNode.insertAdjacentElement('afterend', displayCoords);
                             } else {
                                 displayCoords.textContent = text;
                             }
@@ -229,10 +200,7 @@ export default class ApiManager {
                     const blobUUID = data['blobID'];
                     const blobData = data['blobData'];
 
-                    const templateBlob = await this.templateManager.drawTemplateOnTile(
-                        blobData,
-                        tileCoordsTile,
-                    );
+                    const templateBlob = await this.templateManager.drawTemplateOnTile(blobData, tileCoordsTile);
 
                     window.postMessage({
                         source: 'blue-marble',
@@ -288,10 +256,7 @@ export default class ApiManager {
             }, 1000); // Update every second
         } else {
             // No charge data available
-            overlay.updateInnerHTML(
-                'bm-user-fullcharge-content',
-                'Full Charge in <b style="color: #6b7280;">N/A</b>',
-            );
+            overlay.updateInnerHTML('bm-user-fullcharge-content', 'Full Charge in <b style="color: #6b7280;">N/A</b>');
             // Apply visibility setting
             try {
                 const show = JSON.parse(localStorage.getItem('bmShowFullCharge') ?? 'true');
@@ -314,10 +279,7 @@ export default class ApiManager {
 
         // If already at full charges
         if (data.current >= data.max || remainingMs <= 0) {
-            overlay.updateInnerHTML(
-                'bm-user-fullcharge-content',
-                `Full Charge in <b style="color: #10b981;">FULL</b>`,
-            );
+            overlay.updateInnerHTML('bm-user-fullcharge-content', `Full Charge in <b style="color: #10b981;">FULL</b>`);
 
             // Apply visibility setting
             try {

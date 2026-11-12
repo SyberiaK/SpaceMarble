@@ -150,10 +150,7 @@ export default class Template {
             // This calculates the size based on which is smaller:
             // A. The top left corner of the current tile to the bottom right corner of the current tile
             // B. The top left corner of the current tile to the bottom right corner of the image
-            const drawSizeY = Math.min(
-                this.tileSize - (pixelY % this.tileSize),
-                imageHeight - (pixelY - this.coords[3]),
-            );
+            const drawSizeY = Math.min(this.tileSize - (pixelY % this.tileSize), imageHeight - (pixelY - this.coords[3]));
 
             for (let pixelX = this.coords[2]; pixelX < imageWidth + this.coords[2]; ) {
                 // Yield control periodically to prevent UI blocking
@@ -168,10 +165,7 @@ export default class Template {
                 // This calculates the size based on which is smaller:
                 // A. The top left corner of the current tile to the bottom right corner of the current tile
                 // B. The top left corner of the current tile to the bottom right corner of the image
-                const drawSizeX = Math.min(
-                    this.tileSize - (pixelX % this.tileSize),
-                    imageWidth - (pixelX - this.coords[2]),
-                );
+                const drawSizeX = Math.min(this.tileSize - (pixelX % this.tileSize), imageWidth - (pixelX - this.coords[2]));
 
                 // console.log(`Math.min(${this.tileSize} - (${pixelX} % ${this.tileSize}), ${imageWidth} - (${pixelX - this.coords[2]}))`);
 
@@ -280,13 +274,11 @@ export default class Template {
                 context.putImageData(imageData, 0, 0);
 
                 // Creates the "0000,0000,000,000" key name
-                const templateTileName = `${(this.coords[0] + Math.floor(pixelX / 1000))
+                const templateTileName = `${(this.coords[0] + Math.floor(pixelX / 1000)).toString().padStart(4, '0')},${(
+                    this.coords[1] + Math.floor(pixelY / 1000)
+                )
                     .toString()
-                    .padStart(4, '0')},${(this.coords[1] + Math.floor(pixelY / 1000))
-                    .toString()
-                    .padStart(4, '0')},${(pixelX % 1000)
-                    .toString()
-                    .padStart(3, '0')},${(pixelY % 1000).toString().padStart(3, '0')}`;
+                    .padStart(4, '0')},${(pixelX % 1000).toString().padStart(3, '0')},${(pixelY % 1000).toString().padStart(3, '0')}`;
 
                 // Optimized bitmap creation - clone canvas before async operations
                 const canvasClone = canvas.cloneNode(true);
@@ -667,17 +659,11 @@ export default class Template {
                 debugLog(`  Border enabled: ${borderEnabled}`);
 
                 if (templatePixels.size === 0) {
-                    console.warn(
-                        `🚨 [CRITICAL] No template pixels found! Template might be completely transparent.`,
-                    );
+                    console.warn(`🚨 [CRITICAL] No template pixels found! Template might be completely transparent.`);
                 } else if (crosshairCount === 0) {
-                    console.warn(
-                        `⚠️ [ISSUE] Template pixels found but no crosshairs applied! Check template structure.`,
-                    );
+                    console.warn(`⚠️ [ISSUE] Template pixels found but no crosshairs applied! Check template structure.`);
                 } else if (borderEnabled && borderCount === 0) {
-                    console.warn(
-                        `⚠️ [BORDER ISSUE] Borders enabled but none applied! Template might not have diagonal space.`,
-                    );
+                    console.warn(`⚠️ [BORDER ISSUE] Borders enabled but none applied! Template might not have diagonal space.`);
                 } else {
                     debugLog(`Crosshairs applied successfully`);
                 }

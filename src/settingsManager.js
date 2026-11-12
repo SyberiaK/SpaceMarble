@@ -646,8 +646,7 @@ export function getCompactSort() {
 /** Saves the Compact List sort */
 export function saveCompactSort(sortValue) {
     try {
-        if (typeof GM_setValue !== 'undefined')
-            GM_setValue('bmcf-compact-sort', JSON.stringify(sortValue));
+        if (typeof GM_setValue !== 'undefined') GM_setValue('bmcf-compact-sort', JSON.stringify(sortValue));
         localStorage.setItem('bmcf-compact-sort', sortValue); // keep old key as backup
     } catch {}
 }
