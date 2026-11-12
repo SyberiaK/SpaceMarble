@@ -173,6 +173,8 @@ inject(() => {
             // Since this code does not run in the userscript, we can't use debugLog().
             // console.log(`%c${name}%c: Sending JSON message about endpoint "${endpointName}"`, consoleStyle, '');
 
+            const cloned = response.clone();
+
             // Sends a message about the endpoint it spied on
             cloned
                 .json()
@@ -194,7 +196,7 @@ inject(() => {
 
             const blink = Date.now(); // Current time
 
-            const blob = await cloned.blob(); // The original blob
+            const blob = await response.blob(); // The original blob
 
             // Since this code does not run in the userscript, we can't use debugLog().
             // console.log(`%c${name}%c: ${fetchedBlobQueue.size} Sending IMAGE message about endpoint "${endpointName}"`, consoleStyle, '');
@@ -227,13 +229,6 @@ inject(() => {
                     blobData: blob,
                     blink: blink,
                 });
-            }).catch((exception) => {
-                const elapsed = Date.now();
-                console.error(`%c${name}%c: Failed to Promise blob!`, consoleStyle, '');
-                console.groupCollapsed(`%c${name}%c: Details of failed blob Promise:`, consoleStyle, '');
-                // debugLog(`Endpoint: ${endpointName}\nThere are ${fetchedBlobQueue.size} blobs processing...\nBlink: ${blink.toLocaleString()}\nTime Since Blink: ${String(Math.floor(elapsed/60000)).padStart(2,'0')}:${String(Math.floor(elapsed/1000) % 60).padStart(2,'0')}.${String(elapsed % 1000).padStart(3,'0')} MM:SS.mmm`);
-                console.error(`Exception stack:`, exception);
-                console.groupEnd();
             });
 
             // cloned.blob().then(blob => {
