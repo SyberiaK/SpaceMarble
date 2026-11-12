@@ -1,3 +1,9 @@
+const MAP_SIZE = 2048000;
+const DEG = 180 / Math.PI;
+
+const inverseO = (n) => 360 * n - 180;
+const inverseN = (n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * n))) * DEG;
+
 let _debugEnabled = null;
 
 /** Sanitizes HTML to display as plain-text.
@@ -17,9 +23,9 @@ let _debugEnabled = null;
  * </p>
  */
 export function escapeHTML(text) {
-    const div = document.createElement('div'); // Creates a div
+    const div = document.createElement('div');
     div.textContent = text; // Puts the text in a PLAIN-TEXT property
-    return div.innerHTML; // Returns the HTML property of the div
+    return div.innerHTML;
 }
 
 /** Converts the server tile-pixel coordinate system to the displayed tile-pixel coordinate system.
@@ -87,7 +93,7 @@ export function saveDebugLoggingEnabled(enabled) {
         // Also save to localStorage as backup
         localStorage.setItem('bmDebugLoggingEnabled', enabledString);
     } catch (error) {
-        // Silently fail to avoid console spam
+        console.error('saving debug settings failed: ', error);
     }
 }
 
@@ -97,12 +103,8 @@ export function saveDebugLoggingEnabled(enabled) {
  */
 export function debugLog(...args) {
     try {
-        if (isDebugEnabled()) {
-            console.log(...args);
-        }
-    } catch (error) {
-        // Silently fail if debug logging has issues to prevent breaking the app
-    }
+        if (isDebugEnabled()) console.log(...args);
+    } catch (_) {}
 }
 
 /** Encodes a number into a custom encoded string.
@@ -118,18 +120,17 @@ export function debugLog(...args) {
  * console.log(numberToEncoded(12345, encode)); // 1BCaA
  */
 export function numberToEncoded(number, encoding) {
-    if (number === 0) return encoding[0]; // End quickly if number equals 0. No special calculation needed
+    const base = encoding.length;
+    if (!Number.isSafeInteger(number) || number < 0 || base < 2) return undefined;
 
-    let result = ''; // The encoded string
-    const base = encoding.length; // The number of characters used, which determines the base
+    const result = [];
 
-    // Base conversion algorithm
-    while (number > 0) {
-        result = encoding[number % base] + result; // Find's the character's encoded value determined by the modulo of the base
-        number = Math.floor(number / base); // Divides the number by the base so the next iteration can find the next modulo character
-    }
+    do {
+        result.push(encoding[number % base]);
+        number = Math.floor(number / base);
+    } while (number > 0);
 
-    return result; // The final encoded string
+    return result.reverse().join('');
 }
 
 /** Converts a Uint8 array to base64 using the browser's built-in binary to ASCII function
@@ -138,11 +139,9 @@ export function numberToEncoded(number, encoding) {
  * @since 0.72.9
  */
 export function uint8ToBase64(uint8) {
-    let binary = '';
-    for (let i = 0; i < uint8.length; i++) {
-        binary += String.fromCharCode(uint8[i]);
-    }
-    return btoa(binary); // Binary to ASCII
+    const bin = [];
+    for (const byte of uint8) bin.push(String.fromCharCode(byte));
+    return btoa(bin.reverse().join(''));
 }
 
 /** Decodes a base 64 encoded Uint8 array using the browser's built-in ASCII to binary function
@@ -153,41 +152,25 @@ export function uint8ToBase64(uint8) {
 export function base64ToUint8(base64) {
     const binary = atob(base64); // ASCII to Binary
     const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        array[i] = binary.charCodeAt(i);
-    }
+    for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
     return array;
 }
 
 /** Converts a 4 element array of coordinates into map longitude and latitude
- * @param {number[]} coordinates A 4 element array of coordinates (Tile X, Tile Y, Pixel X, Pixel Y)
+ * @param {number[]} coords A 4 element array of coordinates (Tile X, Tile Y, Pixel X, Pixel Y)
  * @returns {{lng: number, lat: number} | undefined} A lngLat object or undefined if an error occurred e.g. malformed coordinates data
  * @since 1.0.0
  */
-export function canvasPosToLatLng(coordinates) {
+export function canvasPosToLatLng(coords) {
     // Function provided by courtesy of CloudBurst
-    if (coordinates.length !== 4) {
-        return undefined;
-    }
+    if (!Array.isArray(coords) || coords.length !== 4 || !coords.every(Number.isFinite)) return undefined;
 
-    let actualX = coordinates[0] * 1000 + coordinates[2];
-    let actualY = coordinates[1] * 1000 + coordinates[3];
-
-    const mapSize = 2048000;
-
-    let x = actualX / mapSize;
-    let y = actualY / mapSize;
-
-    function inverseO_(n) {
-        return 360 * x - 180;
-    }
-    function inverseN_(n) {
-        return ((Math.atan(Math.exp(Math.PI - 2 * Math.PI * n)) - Math.PI / 4) * 360) / Math.PI;
-    }
+    let x = (coords[0] * 1000 + coords[2]) / MAP_SIZE;
+    let y = (coords[1] * 1000 + coords[3]) / MAP_SIZE;
 
     return {
-        lng: inverseO_(x),
-        lat: inverseN_(y),
+        lng: inverseO(x),
+        lat: inverseN(y),
     };
 }
 
