@@ -22,6 +22,14 @@ let maxCacheSize = 500; // Increased cache size for better performance
 let cacheVersion = '1.0'; // Version for cache invalidation
 let lastCanvasChangeTime = 0; // Track when canvas was last modified
 
+/** Tiles currently being processed, keyed by cache key.
+ * A second request for the same tile while the first is still running shares that job
+ * instead of starting another one (results are only cached once a job finishes). */
+const inflightTiles = new Map();
+/** Bumped whenever cached or in-flight results become stale (settings changed, cache cleared).
+ * A job that started under an older generation must not be shared or cached. */
+let renderGeneration = 0;
+
 /** Cache statistics and management */
 const CACHE_STATS_KEY = 'bmSmartTileCacheStats';
 const CACHE_VERSION_KEY = 'bmSmartTileCacheVersion';
@@ -190,6 +198,8 @@ function saveCacheStatistics() {
  * @since 1.0.0
  */
 function clearSmartTileCache() {
+    renderGeneration++;
+    inflightTiles.clear();
     smartTileCache.clear();
     cacheAccessOrder.clear();
     cacheHits = 0;
@@ -235,10 +245,74 @@ export function toggleSmartTileCache() {
  * @since 1.0.0
  */
 export function invalidateCacheForSettingsChange() {
+    // Tiles still being processed were rendered with the old settings: don't share or store them
+    renderGeneration++;
+    inflightTiles.clear();
+
     if (smartTileCacheEnabled && smartTileCache.size > 0) {
         debugLog('[Tile Cache] Invalidating cache due to visual settings change');
         clearSmartTileCache();
     }
+}
+
+/** Wraps the template manager's tile drawing with the smart cache and in-flight sharing.
+ * Assigned as a method of the template manager, so `this` is the template manager.
+ * @param {File} tileBlob - The tile blob data
+ * @param {Array<number>} tileCoords - The tile coordinates
+ * @returns {Promise<Blob>} The processed tile blob
+ */
+async function cachedDrawTemplateOnTile(tileBlob, tileCoords) {
+    const cacheKey = generateCacheKey(tileCoords, this.templatesArray, tileBlob);
+
+    if (smartTileCacheEnabled) {
+        const cachedResult = getFromSmartCache(cacheKey);
+        if (cachedResult) {
+            return cachedResult;
+        }
+
+        // The same tile is already being processed: wait for that job instead of repeating it
+        const pending = inflightTiles.get(cacheKey);
+        if (pending) {
+            debugLog('[Tile Cache] Sharing in-flight job for key:', cacheKey.substring(0, 20));
+            return pending;
+        }
+    }
+
+    const generation = renderGeneration;
+
+    const job = (async () => {
+        // Process tile with original function (cache miss or disabled)
+        const result = await originalDrawTemplateOnTile(tileBlob, tileCoords);
+
+        // Don't store results rendered before the settings last changed; they may be stale
+        if (generation === renderGeneration && !tileRefreshPaused && !isCapturingState && smartTileCacheEnabled) {
+            storeInSmartCache(cacheKey, result);
+
+            // Also store in frozen cache for pause functionality
+            const tileKey = Array.isArray(tileCoords)
+                ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
+                : tileCoords.toString();
+            frozenTileCache.set(tileKey, result);
+
+            // Limit frozen cache size to prevent memory issues
+            if (frozenTileCache.size > 100) {
+                const firstKey = frozenTileCache.keys().next().value;
+                frozenTileCache.delete(firstKey);
+            }
+        }
+
+        return result;
+    })();
+
+    if (smartTileCacheEnabled) {
+        inflightTiles.set(cacheKey, job);
+        const release = () => {
+            if (inflightTiles.get(cacheKey) === job) inflightTiles.delete(cacheKey);
+        };
+        job.then(release, release); // handles rejection for this chain only; callers still see it
+    }
+
+    return job;
 }
 
 /** Initializes the tile refresh pause system
@@ -256,41 +330,8 @@ export function initializeTileRefreshPause(templateManager) {
     if (!originalDrawTemplateOnTile) {
         originalDrawTemplateOnTile = templateManager.drawTemplateOnTile.bind(templateManager);
 
-        // Wrap the original function with smart caching and freeze functionality
-        templateManager.drawTemplateOnTile = async function (tileBlob, tileCoords) {
-            // Generate cache key for smart cache
-            const cacheKey = generateCacheKey(tileCoords, this.templatesArray, tileBlob);
-
-            // Try to get from smart cache first (if enabled and not paused)
-            if (!tileRefreshPaused && smartTileCacheEnabled) {
-                const cachedResult = getFromSmartCache(cacheKey);
-                if (cachedResult) {
-                    return cachedResult;
-                }
-            }
-
-            // Process tile with original function (cache miss or disabled)
-            const result = await originalDrawTemplateOnTile(tileBlob, tileCoords);
-
-            // Store in smart cache for future use
-            if (!tileRefreshPaused && !isCapturingState && smartTileCacheEnabled) {
-                storeInSmartCache(cacheKey, result);
-
-                // Also store in frozen cache for pause functionality
-                const tileKey = Array.isArray(tileCoords)
-                    ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
-                    : tileCoords.toString();
-                frozenTileCache.set(tileKey, result);
-
-                // Limit frozen cache size to prevent memory issues
-                if (frozenTileCache.size > 100) {
-                    const firstKey = frozenTileCache.keys().next().value;
-                    frozenTileCache.delete(firstKey);
-                }
-            }
-
-            return result;
-        };
+        // Wrap the original function with smart caching and in-flight sharing
+        templateManager.drawTemplateOnTile = cachedDrawTemplateOnTile;
     }
 
     // Apply the pause state
@@ -325,40 +366,7 @@ function applyTileRefreshPause(templateManager) {
     } else {
         // When resuming, restore the wrapped function that continues smart caching
         if (originalDrawTemplateOnTile) {
-            templateManager.drawTemplateOnTile = async function (tileBlob, tileCoords) {
-                // Generate cache key for smart cache
-                const cacheKey = generateCacheKey(tileCoords, this.templatesArray, tileBlob);
-
-                // Try to get from smart cache first
-                if (smartTileCacheEnabled) {
-                    const cachedResult = getFromSmartCache(cacheKey);
-                    if (cachedResult) {
-                        return cachedResult;
-                    }
-                }
-
-                // Process tile with original function (cache miss or disabled)
-                const result = await originalDrawTemplateOnTile(tileBlob, tileCoords);
-
-                // Store in smart cache for future use
-                if (!tileRefreshPaused && !isCapturingState && smartTileCacheEnabled) {
-                    storeInSmartCache(cacheKey, result);
-
-                    // Also store in frozen cache for pause functionality
-                    const tileKey = Array.isArray(tileCoords)
-                        ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
-                        : tileCoords.toString();
-                    frozenTileCache.set(tileKey, result);
-
-                    // Limit frozen cache size to prevent memory issues
-                    if (frozenTileCache.size > 100) {
-                        const firstKey = frozenTileCache.keys().next().value;
-                        frozenTileCache.delete(firstKey);
-                    }
-                }
-
-                return result;
-            };
+            templateManager.drawTemplateOnTile = cachedDrawTemplateOnTile;
         }
     }
 }
