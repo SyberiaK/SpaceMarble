@@ -79,14 +79,33 @@ function initializeSmartTileCache() {
     }
 }
 
+/** Hashes the bytes of a blob (SHA-256, first 8 bytes as hex).
+ * A one-pixel change often leaves a PNG exactly the same size, so size alone cannot tell tiles apart.
+ * @param {Blob} blob - The blob to hash
+ * @returns {Promise<string|null>} Hex digest, or null if hashing is not available
+ */
+async function hashBlobContent(blob) {
+    try {
+        if (!blob || !globalThis.crypto || !globalThis.crypto.subtle) return null;
+        const digest = await globalThis.crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+        let hex = '';
+        for (const byte of new Uint8Array(digest, 0, 8)) {
+            hex += byte.toString(16).padStart(2, '0');
+        }
+        return hex;
+    } catch (_) {
+        return null;
+    }
+}
+
 /** Generates a cache key for a tile based on coordinates, template state, and tile content
  * @param {Array<number>|string} tileCoords - The tile coordinates
  * @param {Array} templateArray - Current templates for hash generation
  * @param {Blob} tileBlob - The tile blob to hash for content changes
- * @returns {string} Cache key
+ * @returns {Promise<string>} Cache key
  * @since 1.0.0
  */
-function generateCacheKey(tileCoords, templateArray, tileBlob) {
+async function generateCacheKey(tileCoords, templateArray, tileBlob) {
     // Format coordinates consistently
     const coordsKey = Array.isArray(tileCoords)
         ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
@@ -102,12 +121,12 @@ function generateCacheKey(tileCoords, templateArray, tileBlob) {
             .join('|');
     }
 
-    // Create a simple hash of the tile content to detect canvas changes
+    // Identify the tile content, so the key changes whenever any pixel on the tile changes
     let contentHash = 'nodata';
     if (tileBlob && tileBlob.size) {
-        // Use blob size and type as a simple content signature
-        // This will change when pixels are painted on the tile
-        contentHash = `${tileBlob.size}_${tileBlob.type}`;
+        const bytesHash = await hashBlobContent(tileBlob);
+        // Without a hash (no crypto.subtle) fall back to size and type, which can miss same-size changes
+        contentHash = bytesHash ? `${tileBlob.size}_${tileBlob.type}_${bytesHash}` : `${tileBlob.size}_${tileBlob.type}`;
     }
 
     return `${coordsKey}_${templateHash}_${contentHash}`;
@@ -262,7 +281,7 @@ export function invalidateCacheForSettingsChange() {
  * @returns {Promise<Blob>} The processed tile blob
  */
 async function cachedDrawTemplateOnTile(tileBlob, tileCoords) {
-    const cacheKey = generateCacheKey(tileCoords, this.templatesArray, tileBlob);
+    const cacheKey = await generateCacheKey(tileCoords, this.templatesArray, tileBlob);
 
     if (smartTileCacheEnabled) {
         const cachedResult = getFromSmartCache(cacheKey);
