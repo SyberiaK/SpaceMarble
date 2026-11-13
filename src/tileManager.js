@@ -31,8 +31,8 @@ const inflightTiles = new Map();
 let renderGeneration = 0;
 
 /** Cache statistics and management */
-const CACHE_STATS_KEY = 'bmSmartTileCacheStats';
-const CACHE_VERSION_KEY = 'bmSmartTileCacheVersion';
+const CACHE_STATS_KEY = 'smSmartTileCacheStats';
+const CACHE_VERSION_KEY = 'smSmartTileCacheVersion';
 
 /** Notifies cache system that canvas has changed (pixels painted/modified)
  * Note: Cache no longer blocks real-time updates, so this is mainly for statistics
