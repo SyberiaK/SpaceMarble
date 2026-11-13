@@ -23,6 +23,7 @@ import {
     toggleSmartTileCache,
     notifyCanvasChange,
 } from './tileManager.js';
+import { initTileWorkers } from './tileWorkers.js';
 import * as Settings from './settingsManager.js';
 import { getDragModeEnabled, saveDragModeEnabled } from './settingsManager.js';
 import { getTemplateColorSort, saveTemplateColorSort, getCompactSort, saveCompactSort } from './settingsManager.js';
@@ -1291,6 +1292,7 @@ buildOverlayMain(); // Builds the main overlay
 
 // Initialize tile refresh pause system
 initializeTileRefreshPause(templateManager);
+initTileWorkers(); // Background workers for the heavy pixel loops (falls back to the main thread)
 
 // Initialize mini tracker after a short delay to ensure DOM is ready
 setTimeout(() => {

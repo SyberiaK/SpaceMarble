@@ -1,6 +1,8 @@
 import Template from './Template.js';
 import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
+import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelOps.js';
+import { scanTemplateColorsAsync, countChunkPixelsAsync, workersActive } from './tileWorkers.js';
 
 // Temporary profiling: run localStorage.setItem('bmPerf','1') in the console and reload to enable
 const PERF = (() => {
@@ -10,159 +12,6 @@ const PERF = (() => {
         return false;
     }
 })();
-
-/** Packs an "r,g,b" color key into one integer, or -1 if the key is malformed.
- * Comparing integers is far cheaper than building an "r,g,b" string for every pixel.
- * @param {string} key - Color key in the form "r,g,b"
- * @returns {number} Packed color (r << 16 | g << 8 | b), or -1
- */
-function packColorKey(key) {
-    const parts = String(key).split(',').map(Number);
-    if (parts.length !== 3 || !parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
-        return -1;
-    }
-    return (parts[0] << 16) | (parts[1] << 8) | parts[2];
-}
-
-/** Applies color filtering to the center pixels of a template chunk and marks enhanced ones.
- * Pure function (no DOM access).
- * @param {Uint8ClampedArray} data - Template RGBA data. Pixels of disabled colors get alpha 0
- * @param {Uint8ClampedArray} originalData - Copy of the RGBA data from before filtering (or null)
- * @param {number} width - Chunk width in pixels
- * @param {number} height - Chunk height in pixels
- * @param {number} mult - Enlarged pixel size (3)
- * @param {Set<number>} disabledInts - Packed disabled colors
- * @param {Set<number>} enhancedInts - Packed enhanced colors
- * @param {Uint8Array|null} enhancedMask - Receives 1 for every enhanced center pixel (index y * width + x)
- * @param {boolean} hasDisabledColors - Whether disabled colors should be filtered
- * @param {boolean} hasEnhancedColors - Whether enhanced pixels should be tracked
- * @returns {number} Number of enhanced pixels found
- */
-function scanTemplateColors(data, originalData, width, height, mult, disabledInts, enhancedInts, enhancedMask, hasDisabledColors, hasEnhancedColors) {
-    let enhancedCount = 0;
-
-    // Only the center pixel of each 3x3 block is a template pixel (x, y = 1, 4, 7, ...)
-    for (let y = 1; y < height; y += mult) {
-        for (let x = 1; x < width; x += mult) {
-            const i = (y * width + x) * 4;
-
-            if (hasDisabledColors) {
-                if (data[i + 3] === 0) continue;
-                const packed = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-                if (disabledInts.has(packed)) {
-                    data[i + 3] = 0; // Hide disabled colors by making them transparent
-                } else if (hasEnhancedColors && enhancedInts.has(packed)) {
-                    enhancedMask[y * width + x] = 1;
-                    enhancedCount++;
-                }
-            } else if (hasEnhancedColors) {
-                if (originalData[i + 3] === 0) continue;
-                const packed = (originalData[i] << 16) | (originalData[i + 1] << 8) | originalData[i + 2];
-                if (enhancedInts.has(packed)) {
-                    enhancedMask[y * width + x] = 1;
-                    enhancedCount++;
-                }
-            }
-        }
-    }
-
-    return enhancedCount;
-}
-
-/** Counts required/painted/wrong/missing pixels of one template chunk against the server tile.
- * Pure function (no DOM access).
- * @param {Uint8ClampedArray} tData - Template chunk RGBA data
- * @param {number} tempW - Chunk width
- * @param {number} tempH - Chunk height
- * @param {number} offsetX - Chunk x offset inside the enlarged tile
- * @param {number} offsetY - Chunk y offset inside the enlarged tile
- * @param {Uint8ClampedArray} tilePixels - Server tile RGBA data at native resolution
- * @param {number} tileStride - Server tile width in pixels
- * @param {number} drawSize - Enlarged tile size in pixels
- * @param {number} mult - Enlarged pixel size (3)
- * @param {Map<number, Object>} colorStats - Per-color stats keyed by packed color (mutated)
- * @param {{required: number, painted: number, wrong: number}} totals - Running totals (mutated)
- */
-function countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult, colorStats, totals) {
-    let lastKey = -1;
-    let lastEntry = null;
-
-    // Visit only the center pixel of each 3x3 block (x, y = 1, 4, 7, ...)
-    for (let y = 1; y < tempH; y += mult) {
-        const gy = y + offsetY;
-        if (gy < 0 || gy >= drawSize) continue;
-        const pixelY = (gy / mult) | 0; // gy >= 0 here; no `Math` lookup in the hot path
-        const tileRow = pixelY * tileStride;
-
-        for (let x = 1; x < tempW; x += mult) {
-            const gx = x + offsetX;
-            if (gx < 0 || gx >= drawSize) continue;
-
-            const tIdx = (y * tempW + x) * 4;
-
-            // Ignore transparent and semi-transparent (deface uses alpha 32)
-            if (tData[tIdx + 3] < 64) continue;
-
-            const tr = tData[tIdx];
-            const tg = tData[tIdx + 1];
-            const tb = tData[tIdx + 2];
-
-            // Ignore #deface explicitly
-            if (tr === 222 && tg === 250 && tb === 206) continue;
-
-            const key = (tr << 16) | (tg << 8) | tb;
-            let entry;
-            if (key === lastKey) {
-                entry = lastEntry;
-            } else {
-                entry = colorStats.get(key);
-                if (!entry) {
-                    entry = {
-                        painted: 0,
-                        required: 0,
-                        wrong: 0,
-                        missing: 0,
-                        firstWrongPixel: null,
-                        firstMissingPixel: null,
-                    };
-                    colorStats.set(key, entry);
-                }
-                lastKey = key;
-                lastEntry = entry;
-            }
-            entry.required++;
-            totals.required++;
-
-            const pixelX = (gx / mult) | 0;
-            const tileIdx = (tileRow + pixelX) * 4;
-            const pa = tilePixels[tileIdx + 3];
-
-            if (pa < 64) {
-                entry.missing++;
-                if (!entry.firstMissingPixel) entry.firstMissingPixel = [pixelX, pixelY];
-            } else if (tilePixels[tileIdx] === tr && tilePixels[tileIdx + 1] === tg && tilePixels[tileIdx + 2] === tb) {
-                totals.painted++;
-                entry.painted++;
-            } else {
-                totals.wrong++;
-                entry.wrong++;
-                if (!entry.firstWrongPixel) entry.firstWrongPixel = [pixelX, pixelY];
-            }
-        }
-    }
-}
-
-/** Converts packed-color stats into the "r,g,b"-keyed object the rest of the script expects.
- * @param {Map<number, Object>} colorStats - Per-color stats keyed by packed color
- * @returns {Object} Stats keyed by "r,g,b"
- */
-function buildColorBreakdown(colorStats) {
-    const colorBreakdown = {};
-    for (const [key, entry] of colorStats) {
-        colorBreakdown[`${key >> 16},${(key >> 8) & 255},${key & 255}`] = entry;
-    }
-    return colorBreakdown;
-}
 
 /** Manages the template system.
  * This class handles all external requests for template modification, creation, and analysis.
@@ -805,15 +654,16 @@ export default class TemplateManager {
                 tempCtx.drawImage(template.bitmap, 0, 0);
 
                 // Get image data for processing
-                const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                let imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
                 perfMark('enh-read');
-                const data = imageData.data;
+                let data = imageData.data; // may be replaced by the scan below (workers hand back a new buffer)
                 const width = tempCanvas.width;
                 const height = tempCanvas.height;
 
                 // Create a copy for border detection if enhanced mode is enabled
-                const originalData = hasEnhancedColors ? new Uint8ClampedArray(data) : null;
-                const enhancedMask = hasEnhancedColors ? new Uint8Array(width * height) : null;
+                // (originalData and enhancedMask are produced by the scan below)
+                let originalData = null;
+                let enhancedMask = null;
                 let enhancedCount = 0;
 
                 // Get the current canvas state (including painted pixels) for crosshair collision detection
@@ -823,18 +673,24 @@ export default class TemplateManager {
                 if (hasDisabledColors || hasEnhancedColors) {
                     const disabledInts = new Set(Array.from(currentTemplate.disabledColors, packColorKey).filter((n) => n >= 0));
                     const enhancedInts = new Set(Array.from(currentTemplate.enhancedColors, packColorKey).filter((n) => n >= 0));
-                    enhancedCount = scanTemplateColors(
+                    const scanned = await scanTemplateColorsAsync({
                         data,
-                        originalData,
                         width,
                         height,
-                        this.drawMult,
+                        mult: this.drawMult,
                         disabledInts,
                         enhancedInts,
-                        enhancedMask,
                         hasDisabledColors,
                         hasEnhancedColors,
-                    );
+                    });
+                    if (scanned.data !== data) {
+                        // The pixels went through a worker and came back in a new buffer
+                        data = scanned.data;
+                        imageData = new ImageData(data, width, height);
+                    }
+                    originalData = scanned.originalData;
+                    enhancedMask = scanned.enhancedMask;
+                    enhancedCount = scanned.enhancedCount;
                     debugLog(`Found ${enhancedCount} enhanced pixels`);
                 }
                 perfMark('enh-scan');
@@ -1137,19 +993,18 @@ export default class TemplateManager {
                     const tData = tempCtx.getImageData(0, 0, tempW, tempH).data;
                     perfMark('count-read');
 
-                    countChunkPixels(
+                    const chunk = await countChunkPixelsAsync({
                         tData,
                         tempW,
                         tempH,
-                        Number(template.pixelCoords[0]) * this.drawMult,
-                        Number(template.pixelCoords[1]) * this.drawMult,
+                        offsetX: Number(template.pixelCoords[0]) * this.drawMult,
+                        offsetY: Number(template.pixelCoords[1]) * this.drawMult,
                         tilePixels,
                         tileStride,
                         drawSize,
-                        this.drawMult,
-                        colorStats,
-                        totals,
-                    );
+                        mult: this.drawMult,
+                    });
+                    mergeChunkStats(colorStats, totals, chunk.entries, chunk.totals);
                     perfMark('count-loop');
                 }
 
@@ -1374,7 +1229,7 @@ export default class TemplateManager {
             perfMark('encode');
             console.log(
                 `[sm-perf] tile ${tileCoords} (${templateCount} tpl, ${(outBlob.size / 1024).toFixed(0)} KB out): ` +
-                    `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms`,
+                    `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms | workers ${workersActive() ? 'on' : 'off'}`,
             );
         }
         return outBlob;
