@@ -15,74 +15,84 @@ import { debugLog } from './utils.js';
 /** Upper bound on the number of workers. Tiles arrive a few at a time, so a handful is plenty. */
 const MAX_WORKERS = 4;
 /** How long the start-up self-test may take before workers are considered unavailable. */
-const STARTUP_TIMEOUT_MS = 4000;
+const STARTUP_TIMEOUT_MS = 3000;
 
 /** The worker's entry point. It never runs on the main thread: its source text is inserted into the worker
  * script with Function.prototype.toString(), like the pixel loops.
  * It has to be real code, not a string: the build renames properties, and it must rename them the same way
- * here as in the code that builds the messages. For the same reason the handler table is looked up by a
- * string at runtime, so its keys are quoted (quoted names are never renamed).
+ * here as in the code that builds the messages. For the same reason jobs are dispatched on the job type
+ * string with a switch: a table keyed by job type would have its keys renamed, but the type string sent
+ * by the main thread would not be.
  * @param {Function} scanFn - scanTemplateColors
  * @param {Function} countFn - countChunkPixels
  */
 function workerEntry(scanFn, countFn) {
-    const handlers = {
-        ping: () => ({ result: 'pong' }),
+    const scan = (a) => {
+        const data = new Uint8ClampedArray(a.data);
+        const originalData = a.hasEnhancedColors ? new Uint8ClampedArray(data) : null;
+        const enhancedMask = a.hasEnhancedColors ? new Uint8Array(a.width * a.height) : null;
+        const enhancedCount = scanFn(
+            data,
+            originalData,
+            a.width,
+            a.height,
+            a.mult,
+            new Set(a.disabled),
+            new Set(a.enhanced),
+            enhancedMask,
+            a.hasDisabledColors,
+            a.hasEnhancedColors,
+        );
+        const transfer = [data.buffer];
+        if (originalData) transfer.push(originalData.buffer);
+        if (enhancedMask) transfer.push(enhancedMask.buffer);
+        return {
+            result: {
+                data: data.buffer,
+                originalData: originalData ? originalData.buffer : null,
+                enhancedMask: enhancedMask ? enhancedMask.buffer : null,
+                enhancedCount,
+            },
+            transfer,
+        };
+    };
 
-        scan: (a) => {
-            const data = new Uint8ClampedArray(a.data);
-            const originalData = a.hasEnhancedColors ? new Uint8ClampedArray(data) : null;
-            const enhancedMask = a.hasEnhancedColors ? new Uint8Array(a.width * a.height) : null;
-            const enhancedCount = scanFn(
-                data,
-                originalData,
-                a.width,
-                a.height,
-                a.mult,
-                new Set(a.disabled),
-                new Set(a.enhanced),
-                enhancedMask,
-                a.hasDisabledColors,
-                a.hasEnhancedColors,
-            );
-            const transfer = [data.buffer];
-            if (originalData) transfer.push(originalData.buffer);
-            if (enhancedMask) transfer.push(enhancedMask.buffer);
-            return {
-                result: {
-                    data: data.buffer,
-                    originalData: originalData ? originalData.buffer : null,
-                    enhancedMask: enhancedMask ? enhancedMask.buffer : null,
-                    enhancedCount,
-                },
-                transfer,
-            };
-        },
-
-        count: (a) => {
-            const colorStats = new Map();
-            const totals = { required: 0, painted: 0, wrong: 0 };
-            countFn(
-                new Uint8ClampedArray(a.tData),
-                a.tempW,
-                a.tempH,
-                a.offsetX,
-                a.offsetY,
-                a.tilePixels,
-                a.tileStride,
-                a.drawSize,
-                a.mult,
-                colorStats,
-                totals,
-            );
-            return { result: { entries: Array.from(colorStats), totals } };
-        },
+    const count = (a) => {
+        const colorStats = new Map();
+        const totals = { required: 0, painted: 0, wrong: 0 };
+        countFn(
+            new Uint8ClampedArray(a.tData),
+            a.tempW,
+            a.tempH,
+            a.offsetX,
+            a.offsetY,
+            a.tilePixels,
+            a.tileStride,
+            a.drawSize,
+            a.mult,
+            colorStats,
+            totals,
+        );
+        return { result: { entries: Array.from(colorStats), totals } };
     };
 
     self.onmessage = (event) => {
         const { id, type, args } = event.data;
         try {
-            const out = handlers[type](args);
+            let out;
+            switch (type) {
+                case 'scan':
+                    out = scan(args);
+                    break;
+                case 'count':
+                    out = count(args);
+                    break;
+                case 'ping':
+                    out = { result: 'pong' };
+                    break;
+                default:
+                    throw new Error(`unknown job type: ${type}`);
+            }
             self.postMessage({ id, ok: true, result: out.result }, out.transfer || []);
         } catch (error) {
             self.postMessage({ id, ok: false, error: String((error && error.message) || error) });
@@ -178,14 +188,16 @@ class TileWorkerPool {
      */
     start() {
         if (!this.readyPromise) {
+            const startedAt = Date.now();
             this.readyPromise = withTimeout(this.#startAndVerify(), STARTUP_TIMEOUT_MS)
                 .then(() => {
                     this.available = true;
-                    debugLog(`[Tile Workers] ${this.slots.length} workers ready`);
+                    debugLog(`[Tile Workers] ${this.slots.length} workers ready after ${Date.now() - startedAt} ms`);
                     return true;
                 })
                 .catch((error) => {
-                    debugLog('[Tile Workers] Unavailable, using the main thread:', error);
+                    // Not a debug message: it explains why every tile is processed on the main thread
+                    console.warn(`[sm-workers] Unavailable after ${Date.now() - startedAt} ms, using the main thread:`, error);
                     this.#disable(error);
                     return false;
                 });
@@ -292,7 +304,8 @@ class TileWorkerPool {
             else pending.reject(new Error(error));
         };
         worker.onerror = (event) => {
-            this.#disable(new Error((event && event.message) || 'worker error'));
+            const where = event && event.filename ? ` (${event.filename}:${event.lineno})` : '';
+            this.#disable(new Error(`${(event && event.message) || 'worker error'}${where}`));
         };
 
         return slot;
@@ -374,11 +387,10 @@ export function workersActive() {
     return Boolean(pool && pool.available);
 }
 
-/** Resolves true if workers can be used for the next job. */
-async function workersReady() {
-    if (!pool) return false;
-    await pool.start();
-    return pool.available;
+/** Whether workers can be used for the next job. Never waits: until the workers have started and passed
+ * their self-test (normally well under a second), jobs simply run on the main thread. */
+function workersReady() {
+    return Boolean(pool && pool.available);
 }
 
 /** Applies color filtering and finds enhanced pixels for one template chunk (see scanTemplateColors).
@@ -398,7 +410,7 @@ async function workersReady() {
 export async function scanTemplateColorsAsync(job) {
     const { data, width, height, mult, disabledInts, enhancedInts, hasDisabledColors, hasEnhancedColors } = job;
 
-    if (await workersReady()) {
+    if (workersReady()) {
         const buffer = exactBuffer(data);
         const result = await pool.run(
             'scan',
@@ -457,7 +469,7 @@ export async function scanTemplateColorsAsync(job) {
 export async function countChunkPixelsAsync(job) {
     const { tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult } = job;
 
-    if (await workersReady()) {
+    if (workersReady()) {
         const buffer = exactBuffer(tData);
         return pool.run('count', { tData: buffer, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult }, [buffer]);
     }
