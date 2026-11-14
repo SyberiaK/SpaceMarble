@@ -604,7 +604,7 @@ export default class TemplateManager {
         };
 
         const canvas = new OffscreenCanvas(drawSize, drawSize);
-        const context = canvas.getContext('2d');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
 
         context.imageSmoothingEnabled = false; // Nearest neighbor
 
