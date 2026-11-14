@@ -3,6 +3,7 @@ import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelOps.js';
 import { scanTemplateColorsAsync, countChunkPixelsAsync, workersActive } from './tileWorkers.js';
+import { EmptyStatusGate } from './emptyStatusGate.js';
 
 // Temporary profiling: run localStorage.setItem('bmPerf','1') in the console and reload to enable
 const PERF = (() => {
@@ -61,6 +62,15 @@ export default class TemplateManager {
         this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
         this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
         this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong}
+
+        // Tiles without templates must not overwrite the status of a template tile that is still being processed
+        this.emptyStatusGate = new EmptyStatusGate({
+            show: () => {
+                this.overlay.handleDisplayStatus(`Displaying 0 templates.`);
+                this.currentlyDisplayedTemplates.clear();
+                this.lastDisplayedCount = 0;
+            },
+        });
 
         // Smart Template Detection Properties
         this.currentlyDisplayedTemplates = new Set(); // Tracks which templates are currently being rendered
@@ -524,11 +534,13 @@ export default class TemplateManager {
         debugLog(`templateCount = ${templateCount}`);
 
         if (templateCount === 0) {
-            this.overlay.handleDisplayStatus(`Displaying 0 templates.`);
-            this.currentlyDisplayedTemplates.clear();
-            this.lastDisplayedCount = 0;
+            // With no enabled template at all there is nothing to wait for; otherwise another tile
+            // of this view may still be showing its template
+            const anyEnabled = templateArray.some((t) => this.isTemplateEnabled(`${t.sortID} ${t.authorID}`));
+            this.emptyStatusGate.requestEmptyStatus(!anyEnabled);
             return tileBlob;
         }
+        this.emptyStatusGate.noteTemplateTile();
 
         if (templateCount > 0) {
             // SMART DETECTION: Track which templates are currently being displayed
@@ -1232,6 +1244,7 @@ export default class TemplateManager {
                     `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms | workers ${workersActive() ? 'on' : 'off'}`,
             );
         }
+        this.emptyStatusGate.noteTemplateTile(); // hold the "0 templates" status from the moment this tile is done
         return outBlob;
     }
 
