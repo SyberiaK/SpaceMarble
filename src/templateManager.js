@@ -603,9 +603,7 @@ export default class TemplateManager {
             return nativeTilePixels;
         };
 
-        const canvas = document.createElement('canvas');
-        canvas.width = drawSize;
-        canvas.height = drawSize;
+        const canvas = new OffscreenCanvas(drawSize, drawSize);
         const context = canvas.getContext('2d');
 
         context.imageSmoothingEnabled = false; // Nearest neighbor
@@ -653,12 +651,13 @@ export default class TemplateManager {
                 context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
             } else {
                 // Enhanced/Filtered path: Real-time processing for color filtering and/or enhanced mode
-                debugLog(`Using enhanced/filtered path`);
-                debugLog(`Template bitmap size: ${template.bitmap.width}x${template.bitmap.height}`);
+                const width = template.bitmap.width;
+                const height = template.bitmap.height;
 
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = template.bitmap.width;
-                tempCanvas.height = template.bitmap.height;
+                debugLog(`Using enhanced/filtered path`);
+                debugLog(`Template bitmap size: ${width}x${height}`);
+
+                const tempCanvas = new OffscreenCanvas(width, height);
                 const tempCtx = tempCanvas.getContext('2d');
                 tempCtx.imageSmoothingEnabled = false;
 
@@ -666,11 +665,9 @@ export default class TemplateManager {
                 tempCtx.drawImage(template.bitmap, 0, 0);
 
                 // Get image data for processing
-                let imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                let imageData = tempCtx.getImageData(0, 0, width, height);
                 perfMark('enh-read');
                 let data = imageData.data; // may be replaced by the scan below (workers hand back a new buffer)
-                const width = tempCanvas.width;
-                const height = tempCanvas.height;
 
                 // Create a copy for border detection if enhanced mode is enabled
                 // (originalData and enhancedMask are produced by the scan below)
@@ -996,9 +993,7 @@ export default class TemplateManager {
                     // Count pixels using Storage fork logic (center pixels only)
                     const tempW = template.bitmap.width;
                     const tempH = template.bitmap.height;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = tempW;
-                    tempCanvas.height = tempH;
+                    const tempCanvas = new OffscreenCanvas(tempW, tempH);
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     tempCtx.imageSmoothingEnabled = false;
                     tempCtx.drawImage(template.bitmap, 0, 0);
