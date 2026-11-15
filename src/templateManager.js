@@ -652,24 +652,23 @@ export default class TemplateManager {
                 context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
             } else {
                 // Enhanced/Filtered path: Real-time processing for color filtering and/or enhanced mode
-                debugLog(`Using enhanced/filtered path`);
-                debugLog(`Template bitmap size: ${template.bitmap.width}x${template.bitmap.height}`);
+                const width = template.bitmap.width;
+                const height = template.bitmap.height;
 
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = template.bitmap.width;
-                tempCanvas.height = template.bitmap.height;
-                const tempCtx = tempCanvas.getContext('2d');
+                debugLog(`Using enhanced/filtered path`);
+                debugLog(`Template bitmap size: ${width}x${height}`);
+
+                const tempCanvas = new OffscreenCanvas(width, height);
+                const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                 tempCtx.imageSmoothingEnabled = false;
 
-                // Draw original template to temp canvas
                 tempCtx.drawImage(template.bitmap, 0, 0);
 
-                // Get image data for processing
                 let imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
                 perfMark('enh-read');
+
                 let data = imageData.data; // may be replaced by the scan below (workers hand back a new buffer)
-                const width = tempCanvas.width;
-                const height = tempCanvas.height;
 
                 // Create a copy for border detection if enhanced mode is enabled
                 // (originalData and enhancedMask are produced by the scan below)
@@ -995,13 +994,12 @@ export default class TemplateManager {
                     // Count pixels using Storage fork logic (center pixels only)
                     const tempW = template.bitmap.width;
                     const tempH = template.bitmap.height;
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = tempW;
-                    tempCanvas.height = tempH;
+                    const tempCanvas = new OffscreenCanvas(tempW, tempH);
                     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                     tempCtx.imageSmoothingEnabled = false;
                     tempCtx.drawImage(template.bitmap, 0, 0);
                     const tData = tempCtx.getImageData(0, 0, tempW, tempH).data;
+                    tempCanvas.width = tempCanvas.height = 0; // release memory instantly
                     perfMark('count-read');
 
                     const chunk = await countChunkPixelsAsync({
@@ -1089,10 +1087,9 @@ export default class TemplateManager {
                         const tempCanvas = new OffscreenCanvas(tempW, tempH);
                         const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                         tempCtx.imageSmoothingEnabled = false;
-                        tempCtx.clearRect(0, 0, tempW, tempH);
                         tempCtx.drawImage(template.bitmap, 0, 0);
-                        const tImg = tempCtx.getImageData(0, 0, tempW, tempH);
-                        const tData = tImg.data;
+                        const tData = tempCtx.getImageData(0, 0, tempW, tempH);
+                        tempCanvas.width = tempCanvas.height = 0; // release memory instantly
 
                         const offsetX = Number(template.pixelCoords[0]) * this.drawMult;
                         const offsetY = Number(template.pixelCoords[1]) * this.drawMult;
@@ -1824,14 +1821,12 @@ export default class TemplateManager {
         try {
             // Analyze each tile bitmap to count colors (like Storage fork)
             for (const [tileKey, tileBitmap] of Object.entries(template.chunked || {})) {
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = tileBitmap.width;
-                tempCanvas.height = tileBitmap.height;
+                const tempCanvas = new OffscreenCanvas(tileBitmap.width, tileBitmap.height);
                 const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
                 tempCtx.imageSmoothingEnabled = false;
                 tempCtx.drawImage(tileBitmap, 0, 0);
-                const imageData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height);
-                const data = imageData.data;
+                const data = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height).data;
+                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
 
                 // Count center pixels only (like Storage fork)
                 for (let y = 0; y < tileBitmap.height; y++) {
@@ -2262,14 +2257,12 @@ export default class TemplateManager {
                 const pixelCoords = [coords[2], coords[3]];
 
                 // Get template bitmap data
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = tileBitmap.width;
-                tempCanvas.height = tileBitmap.height;
+                const tempCanvas = new OffscreenCanvas(tileBitmap.width, tileBitmap.height);
                 const tempCtx = tempCanvas.getContext('2d');
                 tempCtx.imageSmoothingEnabled = false;
                 tempCtx.drawImage(tileBitmap, 0, 0);
-                const templateImageData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height);
-                const templateData = templateImageData.data;
+                const templateData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height).data;
+                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
 
                 // Check each pixel for this color
                 for (let y = 0; y < tileBitmap.height; y++) {
@@ -2395,14 +2388,12 @@ export default class TemplateManager {
             const [targetR, targetG, targetB] = colorKey.split(',').map(Number);
 
             // Get template bitmap data
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = templateBitmap.width;
-            tempCanvas.height = templateBitmap.height;
+            const tempCanvas = new OffscreenCanvas(templateBitmap.width, templateBitmap.height);
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx.imageSmoothingEnabled = false;
             tempCtx.drawImage(templateBitmap, 0, 0);
-            const templateImageData = tempCtx.getImageData(0, 0, templateBitmap.width, templateBitmap.height);
-            const templateData = templateImageData.data;
+            const templateData = tempCtx.getImageData(0, 0, templateBitmap.width, templateBitmap.height).data;
+            tempCanvas.width = tempCanvas.height = 0; // release memory instantly
 
             // Get canvas data for comparison
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
