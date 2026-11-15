@@ -18,8 +18,8 @@ let smartTileCache = new Map(); // Persistent cache with LRU eviction
 let cacheAccessOrder = new Map(); // Track access times for LRU
 let cacheHits = 0;
 let cacheMisses = 0;
-let maxCacheSize = 500; // Increased cache size for better performance
-let cacheVersion = '1.0'; // Version for cache invalidation
+let maxCacheSize = 64 * 1024; // use kilobytes instead of items
+let cacheVersion = '2.0'; // Version for cache invalidation
 let lastCanvasChangeTime = 0; // Track when canvas was last modified
 
 /** Tiles currently being processed, keyed by cache key.
@@ -144,19 +144,34 @@ function updateCacheAccess(key) {
  * @since 1.0.0
  */
 function evictLRUEntries() {
-    if (smartTileCache.size <= maxCacheSize) return;
+    let currentCacheSizeKB = 0;
 
-    // Sort by access time and remove oldest entries
+    for (const blob of smartTileCache.values()) {
+        currentCacheSizeKB += blob.size / 1024;
+    }
+
+    if (currentCacheSizeKB <= maxCacheSize) return;
+
+    // Sort by access time (oldest first)
     const sortedEntries = Array.from(cacheAccessOrder.entries()).sort(([, a], [, b]) => a - b);
 
-    const entriesToRemove = sortedEntries.slice(0, smartTileCache.size - maxCacheSize + 10);
+    let evictedCount = 0;
 
-    for (const [key] of entriesToRemove) {
-        smartTileCache.delete(key);
+    for (const [key] of sortedEntries) {
+        if (currentCacheSizeKB <= maxCacheSize) break;
+
+        const blob = smartTileCache.get(key);
+
+        if (blob) {
+            currentCacheSizeKB -= blob.size / 1024;
+            smartTileCache.delete(key);
+            evictedCount++;
+        }
+
         cacheAccessOrder.delete(key);
     }
 
-    debugLog(`[Tile Cache] Evicted ${entriesToRemove.length} LRU entries, cache size now: ${smartTileCache.size}`);
+    debugLog(`[Tile Cache] Evicted ${evictedCount} LRU entries, cache size now: ${currentCacheSizeKB.toFixed(2)} KB`);
 }
 
 /** Stores a processed tile in the smart cache
@@ -312,12 +327,7 @@ async function cachedDrawTemplateOnTile(tileBlob, tileCoords) {
                 ? tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0')
                 : tileCoords.toString();
             frozenTileCache.set(tileKey, result);
-
-            // Limit frozen cache size to prevent memory issues
-            if (frozenTileCache.size > 100) {
-                const firstKey = frozenTileCache.keys().next().value;
-                frozenTileCache.delete(firstKey);
-            }
+            evictFrozenEntries();
         }
 
         return result;
@@ -470,6 +480,31 @@ export function getTilePerformanceStats() {
  */
 export function getCachedTileCount() {
     return frozenTileCache.size;
+}
+
+/** Evicts first frozen cache entries to reduce memory usage
+ * @since 1.0.1
+ */
+function evictFrozenEntries() {
+    let currentCacheSizeKB = 0;
+    for (const blob of frozenTileCache.values()) {
+        currentCacheSizeKB += blob.size / 1024;
+    }
+
+    if (currentCacheSizeKB <= maxCacheSize) return;
+
+    let evictedCount = 0;
+
+    // maps preserve insertion order, so the first key is the oldest
+    for (const [key, blob] of frozenTileCache) {
+        if (currentCacheSizeKB <= maxCacheSize) break;
+
+        currentCacheSizeKB -= blob.size / 1024;
+        frozenTileCache.delete(key);
+        evictedCount++;
+    }
+
+    debugLog(`[Tile Cache] Evicted ${evictedCount} LRU entries, cache size now: ${currentCacheSizeKB.toFixed(2)} KB`);
 }
 
 /** Clears the frozen tile cache to free memory and ensure clean state
