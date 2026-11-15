@@ -3,6 +3,8 @@
  * The loops themselves live in tilePixelOps.js and are the very same functions the main thread would run:
  * they are inserted into the worker script with Function.prototype.toString(), so there is one implementation.
  * Large pixel buffers are moved to a worker (transferred, not copied) and handed back when it is done.
+ * PNG encoding of the finished tile also runs in the workers, so several tiles are encoded in parallel and
+ * the main thread does not have to wait for the browser to schedule the encode.
  *
  * Everything degrades to the main thread: if workers are unavailable (blocked by the page, failed their
  * start-up self-test, or turned off with localStorage 'smWorkers' = '0'), the same functions run inline.
@@ -12,8 +14,8 @@
 import { scanTemplateColors, countChunkPixels } from './tilePixelOps.js';
 import { debugLog } from './utils.js';
 
-/** Upper bound on the number of workers. Tiles arrive a few at a time, so a handful is plenty. */
-const MAX_WORKERS = 4;
+/** Upper bound on the number of workers. A view shows about 8 to 9 tiles, and encoding one takes the longest. */
+const MAX_WORKERS = 6;
 /** How long the start-up self-test may take before workers are considered unavailable. */
 const STARTUP_TIMEOUT_MS = 3000;
 
@@ -76,7 +78,39 @@ function workerEntry(scanFn, countFn) {
         return { result: { entries: Array.from(colorStats), totals } };
     };
 
-    self.onmessage = (event) => {
+    // Encodes a finished tile as PNG. If anything goes wrong the pixels are handed back,
+    // so the main thread can still encode the tile itself.
+    const encode = async (a) => {
+        const bitmap = a.bitmap;
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        try {
+            // The bitmaprenderer context takes the bitmap over without copying it (and consumes it);
+            // drawing it onto a 2D context is the fallback
+            const renderer = canvas.getContext('bitmaprenderer');
+            if (renderer) {
+                renderer.transferFromImageBitmap(bitmap);
+            } else {
+                canvas.getContext('2d').drawImage(bitmap, 0, 0);
+                bitmap.close();
+            }
+            const blob = await canvas.convertToBlob({ type: 'image/png' });
+            return { result: { blob } };
+        } catch (error) {
+            // A consumed bitmap has width 0: take the pixels back out of the canvas instead
+            let pixels = bitmap;
+            if (bitmap.width === 0) {
+                try {
+                    pixels = canvas.transferToImageBitmap();
+                } catch (_) {
+                    pixels = null;
+                }
+            }
+            const message = String((error && error.message) || error);
+            return pixels ? { result: { error: message, bitmap: pixels }, transfer: [pixels] } : { result: { error: message } };
+        }
+    };
+
+    self.onmessage = async (event) => {
         const { id, type, args } = event.data;
         try {
             let out;
@@ -86,6 +120,9 @@ function workerEntry(scanFn, countFn) {
                     break;
                 case 'count':
                     out = count(args);
+                    break;
+                case 'encode':
+                    out = await encode(args);
                     break;
                 case 'ping':
                     out = { result: 'pong' };
@@ -180,6 +217,7 @@ class TileWorkerPool {
         this.slots = [];
         this.nextId = 1;
         this.available = false;
+        this.encodeAvailable = false; // whether workers can also encode PNGs (verified separately at start-up)
         this.readyPromise = null;
     }
 
@@ -190,9 +228,25 @@ class TileWorkerPool {
         if (!this.readyPromise) {
             const startedAt = Date.now();
             this.readyPromise = withTimeout(this.#startAndVerify(), STARTUP_TIMEOUT_MS)
-                .then(() => {
+                .then(async () => {
                     this.available = true;
                     debugLog(`[Tile Workers] ${this.slots.length} workers ready after ${Date.now() - startedAt} ms`);
+
+                    // Encoding is verified on its own: if it fails, scanning and counting keep using the workers
+                    let encodeOff = false;
+                    try {
+                        encodeOff = localStorage.getItem('smWorkerEncode') === '0'; // switch for comparing encode paths
+                    } catch (_) {
+                        /* storage unavailable: keep going */
+                    }
+                    if (!encodeOff) {
+                        try {
+                            this.encodeAvailable = await withTimeout(this.#verifyEncode(), STARTUP_TIMEOUT_MS);
+                        } catch (error) {
+                            this.encodeAvailable = false;
+                            console.warn('[sm-workers] Tile encoding stays on the main thread:', error);
+                        }
+                    }
                     return true;
                 })
                 .catch((error) => {
@@ -262,6 +316,44 @@ class TileWorkerPool {
                 }
             }),
         );
+    }
+
+    /** Checks that every worker encodes a tiny image to a PNG that decodes back to the same pixels.
+     * @returns {Promise<boolean>} Whether the browser supports it and all workers passed
+     */
+    async #verifyEncode() {
+        if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap !== 'function' || typeof ImageData === 'undefined') {
+            return false;
+        }
+
+        const width = 4;
+        const height = 4;
+        const expected = new Uint8ClampedArray(width * height * 4);
+        for (let i = 0; i < width * height; i++) {
+            if (i === 5) continue; // one fully transparent pixel
+            expected[i * 4] = (i * 53) & 255;
+            expected[i * 4 + 1] = (i * 97) & 255;
+            expected[i * 4 + 2] = (i * 29) & 255;
+            expected[i * 4 + 3] = 255;
+        }
+
+        for (const slot of this.slots) {
+            const bitmap = await createImageBitmap(new ImageData(expected.slice(), width, height));
+            const reply = await this.#runOn(slot, 'encode', { bitmap }, [bitmap]);
+            if (!reply.blob) throw new Error(`encode self-test failed in the worker: ${reply.error}`);
+            if (reply.blob.type !== 'image/png') throw new Error(`encode self-test returned ${reply.blob.type}`);
+
+            const decoded = await createImageBitmap(reply.blob);
+            const canvas = new OffscreenCanvas(width, height);
+            const context = canvas.getContext('2d');
+            context.drawImage(decoded, 0, 0);
+            decoded.close();
+            const actual = context.getImageData(0, 0, width, height).data;
+            for (let i = 0; i < expected.length; i++) {
+                if (actual[i] !== expected[i]) throw new Error('encode self-test mismatch');
+            }
+        }
+        return true;
     }
 
     #mainThreadScan(input) {
@@ -387,6 +479,11 @@ export function workersActive() {
     return Boolean(pool && pool.available);
 }
 
+/** Whether finished tiles are currently encoded in the workers. */
+export function encodeActive() {
+    return Boolean(pool && pool.available && pool.encodeAvailable);
+}
+
 /** Whether workers can be used for the next job. Never waits: until the workers have started and passed
  * their self-test (normally well under a second), jobs simply run on the main thread. */
 function workersReady() {
@@ -478,4 +575,42 @@ export async function countChunkPixelsAsync(job) {
     const totals = { required: 0, painted: 0, wrong: 0 };
     countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult, colorStats, totals);
     return { entries: Array.from(colorStats), totals };
+}
+
+/** Encodes a finished tile as PNG.
+ * With workers, the pixels are moved out of the canvas without a copy (transferToImageBitmap) and encoded in a
+ * worker, so several tiles are encoded in parallel and the main thread is not involved. The canvas is empty
+ * afterwards. Without workers, the tile is encoded on the main thread.
+ * @param {OffscreenCanvas} canvas - The finished tile
+ * @param {Function} [onPrepared] - Called once the pixels have been taken out of the canvas
+ * @returns {Promise<Blob>} PNG blob
+ */
+export async function encodeCanvasAsync(canvas, onPrepared) {
+    if (pool && pool.available && pool.encodeAvailable) {
+        const bitmap = canvas.transferToImageBitmap();
+        if (onPrepared) onPrepared();
+
+        let reply;
+        try {
+            reply = await pool.run('encode', { bitmap }, [bitmap]);
+        } catch (error) {
+            // A detached bitmap (width 0) reached the worker, which then failed: nothing is left to encode here.
+            // Otherwise it never left this thread and can still be encoded below.
+            if (bitmap.width === 0) throw error;
+            reply = { bitmap, error: String(error) };
+        }
+
+        if (reply.blob) return reply.blob;
+
+        // The worker could not encode this tile: stop using workers for encoding
+        console.warn('[sm-workers] A worker could not encode a tile, encoding on the main thread:', reply.error);
+        pool.encodeAvailable = false;
+        if (!reply.bitmap) throw new Error(`worker could not encode the tile and could not hand the pixels back: ${reply.error}`);
+
+        // It handed the pixels back: put them back into the canvas and encode here
+        canvas.getContext('2d').drawImage(reply.bitmap, 0, 0);
+        reply.bitmap.close();
+    }
+
+    return canvas.convertToBlob({ type: 'image/png' });
 }

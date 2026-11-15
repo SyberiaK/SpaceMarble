@@ -2,7 +2,7 @@ import Template from './Template.js';
 import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelOps.js';
-import { scanTemplateColorsAsync, countChunkPixelsAsync, workersActive } from './tileWorkers.js';
+import { scanTemplateColorsAsync, countChunkPixelsAsync, encodeCanvasAsync, workersActive, encodeActive } from './tileWorkers.js';
 import { EmptyStatusGate } from './emptyStatusGate.js';
 
 // Temporary profiling: run localStorage.setItem('bmPerf','1') in the console and reload to enable
@@ -603,10 +603,9 @@ export default class TemplateManager {
             return nativeTilePixels;
         };
 
-        const canvas = document.createElement('canvas');
-        canvas.width = drawSize;
-        canvas.height = drawSize;
-        const context = canvas.getContext('2d');
+        // OffscreenCanvas so the finished tile can be moved to a worker for encoding without a copy
+        const canvas = new OffscreenCanvas(drawSize, drawSize);
+        const context = canvas.getContext('2d', { willReadFrequently: true });
 
         context.imageSmoothingEnabled = false; // Nearest neighbor
 
@@ -1229,19 +1228,13 @@ export default class TemplateManager {
         perfMark('errormap');
         tileBitmap.close(); // Free the decoded tile; nothing below needs it
 
-        // Use compatible blob conversion
-        const outBlob = await new Promise((resolve, reject) => {
-            if (canvas.convertToBlob) {
-                canvas.convertToBlob({ type: 'image/png' }).then(resolve).catch(reject);
-            } else {
-                canvas.toBlob(resolve, 'image/png');
-            }
-        });
+        // Encode as PNG, in a worker when possible (this empties the canvas)
+        const outBlob = await encodeCanvasAsync(canvas, () => perfMark('encode-prep'));
         if (PERF) {
             perfMark('encode');
             console.log(
                 `[sm-perf] tile ${tileCoords} (${templateCount} tpl, ${(outBlob.size / 1024).toFixed(0)} KB out): ` +
-                    `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms | workers ${workersActive() ? 'on' : 'off'}`,
+                    `${perfParts.join(' | ')} | total ${(performance.now() - perfStart).toFixed(0)}ms | workers ${workersActive() ? 'on' : 'off'} | encode ${encodeActive() ? 'worker' : 'main'}`,
             );
         }
         this.emptyStatusGate.noteTemplateTile(); // hold the "0 templates" status from the moment this tile is done
