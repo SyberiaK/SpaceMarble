@@ -370,11 +370,6 @@ export default class TemplateManager {
 
             // 1. Clear template's own caches (enhanced tiles, etc.)
             if (templateToDelete) {
-                // Clear enhanced tiles cache
-                if (templateToDelete.enhancedTilesCache) {
-                    templateToDelete.enhancedTilesCache.clear();
-                }
-
                 // Dispose of template's chunked bitmaps to free memory
                 if (templateToDelete.chunked) {
                     for (const [tileKey, bitmap] of Object.entries(templateToDelete.chunked)) {
