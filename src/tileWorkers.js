@@ -35,7 +35,6 @@ function workerEntry(scanFn, countFn) {
         const enhancedMask = a.hasEnhancedColors ? new Uint8Array(a.width * a.height) : null;
         const enhancedCount = scanFn(
             data,
-            originalData,
             a.width,
             a.height,
             a.mult,
@@ -362,7 +361,6 @@ class TileWorkerPool {
         const mask = new Uint8Array(input.width * input.height);
         const count = scanTemplateColors(
             data,
-            originalData,
             input.width,
             input.height,
             input.mult,
@@ -536,7 +534,6 @@ export async function scanTemplateColorsAsync(job) {
     const enhancedMask = hasEnhancedColors ? new Uint8Array(width * height) : null;
     const enhancedCount = scanTemplateColors(
         data,
-        originalData,
         width,
         height,
         mult,

@@ -33,18 +33,7 @@ export function packColorKey(key) {
  * @param {boolean} hasEnhancedColors - Whether enhanced pixels should be tracked
  * @returns {number} Number of enhanced pixels found
  */
-export function scanTemplateColors(
-    data,
-    originalData,
-    width,
-    height,
-    mult,
-    disabledInts,
-    enhancedInts,
-    enhancedMask,
-    hasDisabledColors,
-    hasEnhancedColors,
-) {
+export function scanTemplateColors(data, width, height, mult, disabledInts, enhancedInts, enhancedMask, hasDisabledColors, hasEnhancedColors) {
     let enhancedCount = 0;
 
     // Only the center pixel of each 3x3 block is a template pixel (x, y = 1, 4, 7, ...)
@@ -62,8 +51,8 @@ export function scanTemplateColors(
                     enhancedCount++;
                 }
             } else if (hasEnhancedColors) {
-                if (originalData[i + 3] === 0) continue;
-                const packed = (originalData[i] << 16) | (originalData[i + 1] << 8) | originalData[i + 2];
+                if (data[i + 3] === 0) continue;
+                const packed = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
                 if (enhancedInts.has(packed)) {
                     enhancedMask[y * width + x] = 1;
                     enhancedCount++;
