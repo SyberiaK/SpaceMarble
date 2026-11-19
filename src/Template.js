@@ -1,4 +1,5 @@
-import { uint8ToBase64, debugLog } from './utils.js';
+import { debugLog } from './utils.js';
+import { encodeChunk } from './templateChunks.js';
 
 /** An instance of a template.
  * Handles all mathematics, manipulation, and analysis regarding a single template.
@@ -43,14 +44,13 @@ export default class Template {
     }
 
     /** Creates chunks of the template for each tile.
+     * A chunk holds the template's pixels at their real size (see templateChunks.js).
      *
-     * @returns {Object} Collection of template bitmaps & buffers organized by tile coordinates
+     * @returns {Object} Collection of template chunks & their saved PNG data (base64) organized by tile coordinates
      * @since 0.65.4
      */
     async createTemplateTiles() {
         // // console.log('Template coordinates:', this.coords);
-
-        const shreadSize = 3; // Scale image factor for pixel art enhancement (must be odd)
 
         // Create bitmap using a more compatible approach
         let bitmap;
@@ -123,26 +123,25 @@ export default class Template {
         this.validPixelCount = validPixels;
         this.transparentPixelCount = transparentPixels;
 
-        const templateTiles = {}; // Holds the template tiles
-        const templateTilesBuffers = {}; // Holds the buffers of the template tiles
+        const templateTiles = {}; // Holds the template chunks, one per tile (see templateChunks.js)
+        const templateTilesBuffers = {}; // Holds the saved PNG data of the chunks (base64)
 
-        // Reuse single canvas for all tiles (major performance boost!)
+        // Reuse single canvas for all chunks
         const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d', {
-            willReadFrequently: true,
-            alpha: true,
-            desynchronized: true, // Allow async rendering for better performance
-        });
-        context.imageSmoothingEnabled = false; // Set once outside loops
+        const context = canvas.getContext('2d', { willReadFrequently: true, alpha: true });
+        context.imageSmoothingEnabled = false;
+
+        // Colors that are disabled while the template is created (packed as (r << 16) | (g << 8) | b)
+        const disabledColorsSet = new Set();
+        for (const colorKey of this.disabledColors) {
+            const [r, g, b] = colorKey.split(',').map(Number);
+            disabledColorsSet.add((r << 16) | (g << 8) | b);
+        }
 
         // For every tile... (with async processing to prevent UI blocking)
         let tileCount = 0;
-        const totalTiles =
-            Math.ceil((imageHeight + this.coords[3] - this.coords[3]) / this.tileSize) *
-            Math.ceil((imageWidth + this.coords[2] - this.coords[2]) / this.tileSize);
 
         for (let pixelY = this.coords[3]; pixelY < imageHeight + this.coords[3]; ) {
-            // Draws the partial tile first, if any
             // This calculates the size based on which is smaller:
             // A. The top left corner of the current tile to the bottom right corner of the current tile
             // B. The top left corner of the current tile to the bottom right corner of the image
@@ -155,119 +154,40 @@ export default class Template {
                 }
                 tileCount++;
 
-                // console.log(`Pixel X: ${pixelX}\nPixel Y: ${pixelY}`);
-
-                // Draws the partial tile first, if any
-                // This calculates the size based on which is smaller:
-                // A. The top left corner of the current tile to the bottom right corner of the current tile
-                // B. The top left corner of the current tile to the bottom right corner of the image
                 const drawSizeX = Math.min(this.tileSize - (pixelX % this.tileSize), imageWidth - (pixelX - this.coords[2]));
 
-                // console.log(`Math.min(${this.tileSize} - (${pixelX} % ${this.tileSize}), ${imageWidth} - (${pixelX - this.coords[2]}))`);
-
-                // console.log(`Draw Size X: ${drawSizeX}\nDraw Size Y: ${drawSizeY}`);
-
-                // Optimize canvas sizing - only resize when necessary
-                const canvasWidth = drawSizeX * shreadSize;
-                const canvasHeight = drawSizeY * shreadSize;
-
-                // Only resize canvas if dimensions changed (expensive operation)
-                if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-                    canvas.width = canvasWidth;
-                    canvas.height = canvasHeight;
-                    context.imageSmoothingEnabled = false; // Reset after resize
+                // The chunk is kept at the template's real size (1x): one canvas pixel per template pixel
+                if (canvas.width !== drawSizeX || canvas.height !== drawSizeY) {
+                    canvas.width = drawSizeX;
+                    canvas.height = drawSizeY;
+                    context.imageSmoothingEnabled = false;
                 }
+                context.clearRect(0, 0, drawSizeX, drawSizeY);
 
-                // console.log(`Getting X ${pixelX}-${pixelX + drawSizeX}\nGetting Y ${pixelY}-${pixelY + drawSizeY}`);
+                const source = bitmap.canvas ? bitmap.canvas : bitmap; // the fallback keeps its canvas in bitmap.canvas
+                context.drawImage(
+                    source, // Image to draw
+                    pixelX - this.coords[2], // Coordinate X to draw from
+                    pixelY - this.coords[3], // Coordinate Y to draw from
+                    drawSizeX, // X width to draw from
+                    drawSizeY, // Y height to draw from
+                    0, // Coordinate X to draw at
+                    0, // Coordinate Y to draw at
+                    drawSizeX, // X width to draw at
+                    drawSizeY, // Y height to draw at
+                );
 
-                // Draws the template segment on this tile segment
-                context.clearRect(0, 0, canvasWidth, canvasHeight); // Clear any previous drawing (only runs when canvas size does not change)
+                const chunkData = context.getImageData(0, 0, drawSizeX, drawSizeY).data;
 
-                // Use different drawing method based on bitmap type
-                if (bitmap.canvas) {
-                    // Fallback method using canvas
-                    context.drawImage(
-                        bitmap.canvas, // Canvas to draw from
-                        pixelX - this.coords[2], // Coordinate X to draw from
-                        pixelY - this.coords[3], // Coordinate Y to draw from
-                        drawSizeX, // X width to draw from
-                        drawSizeY, // Y height to draw from
-                        0, // Coordinate X to draw at
-                        0, // Coordinate Y to draw at
-                        drawSizeX * shreadSize, // X width to draw at
-                        drawSizeY * shreadSize, // Y height to draw at
-                    );
-                } else {
-                    // Standard method using ImageBitmap
-                    context.drawImage(
-                        bitmap, // Bitmap image to draw
-                        pixelX - this.coords[2], // Coordinate X to draw from
-                        pixelY - this.coords[3], // Coordinate Y to draw from
-                        drawSizeX, // X width to draw from
-                        drawSizeY, // Y height to draw from
-                        0, // Coordinate X to draw at
-                        0, // Coordinate Y to draw at
-                        drawSizeX * shreadSize, // X width to draw at
-                        drawSizeY * shreadSize, // Y height to draw at
-                    );
-                }
-
-                // const final = await canvas.convertToBlob({ type: 'image/png' });
-                // const url = URL.createObjectURL(final); // Creates a blob URL
-                // window.open(url, '_blank'); // Opens a new tab with blob
-                // setTimeout(() => URL.revokeObjectURL(url), 60000); // Destroys the blob 1 minute later
-
-                const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight); // Data of the image on the canvas
-                const data = imageData.data; // Cache reference to avoid repeated property access
-
-                // Pre-calculate disabled colors lookup for maximum performance
-                const disabledColorsMap = new Map();
-                for (const colorKey of this.disabledColors) {
-                    const [r, g, b] = colorKey.split(',').map(Number);
-                    // Use packed RGB as key (24-bit integer): (r << 16) | (g << 8) | b
-                    const packedRgb = (r << 16) | (g << 8) | b;
-                    disabledColorsMap.set(packedRgb, true);
-                }
-
-                // Batch process pixels for optimal performance
-                for (let pixelIndex = 0; pixelIndex < data.length; pixelIndex += 4) {
-                    const r = data[pixelIndex];
-                    const g = data[pixelIndex + 1];
-                    const b = data[pixelIndex + 2];
-
-                    // Calculate x,y from pixel index for layout checks
-                    const totalPixelIndex = pixelIndex / 4;
-                    const x = totalPixelIndex % canvasWidth;
-                    const y = Math.floor(totalPixelIndex / canvasWidth);
-
-                    // Fast color check using packed RGB (no string operations!)
-                    const packedRgb = (r << 16) | (g << 8) | b;
-                    const isDisabled = disabledColorsMap.has(packedRgb);
-
-                    // If the pixel is the color #deface, draw a translucent gray checkerboard pattern
-                    if (r === 222 && g === 250 && b === 206) {
-                        if ((x + y) % 2 === 0) {
-                            // Formula for checkerboard pattern
-                            data[pixelIndex] = 0;
-                            data[pixelIndex + 1] = 0;
-                            data[pixelIndex + 2] = 0;
-                            data[pixelIndex + 3] = 32; // Translucent black
-                        } else {
-                            // Transparent negative space
-                            data[pixelIndex + 3] = 0;
+                // Make disabled colors transparent. #deface is never filtered: it becomes a checkerboard when drawn
+                if (disabledColorsSet.size > 0) {
+                    for (let i = 0; i < chunkData.length; i += 4) {
+                        if (chunkData[i] === 222 && chunkData[i + 1] === 250 && chunkData[i + 2] === 206) continue;
+                        if (disabledColorsSet.has((chunkData[i] << 16) | (chunkData[i + 1] << 8) | chunkData[i + 2])) {
+                            chunkData[i + 3] = 0;
                         }
-                    } else if (isDisabled) {
-                        // Make disabled colors transparent
-                        data[pixelIndex + 3] = 0;
-                    } else if (x % shreadSize !== 1 || y % shreadSize !== 1) {
-                        // Otherwise only draw the middle pixel
-                        data[pixelIndex + 3] = 0; // Make the pixel transparent on the alpha channel
                     }
                 }
-
-                // console.log(`Shreaded pixels for ${pixelX}, ${pixelY}`, imageData);
-
-                context.putImageData(imageData, 0, 0);
 
                 // Creates the "0000,0000,000,000" key name
                 const templateTileName = `${(this.coords[0] + Math.floor(pixelX / 1000)).toString().padStart(4, '0')},${(
@@ -276,41 +196,9 @@ export default class Template {
                     .toString()
                     .padStart(4, '0')},${(pixelX % 1000).toString().padStart(3, '0')},${(pixelY % 1000).toString().padStart(3, '0')}`;
 
-                // Optimized bitmap creation - clone canvas before async operations
-                const canvasClone = canvas.cloneNode(true);
-                const cloneContext = canvasClone.getContext('2d');
-                cloneContext.drawImage(canvas, 0, 0);
-
-                try {
-                    templateTiles[templateTileName] = await createImageBitmap(canvasClone);
-                } catch (error) {
-                    templateTiles[templateTileName] = canvasClone;
-                }
-
-                // Optimized buffer conversion - use fastest method available
-                try {
-                    let base64Data;
-
-                    if (canvas.convertToBlob) {
-                        // Modern browsers - async blob conversion
-                        const canvasBlob = await canvas.convertToBlob({ type: 'image/png' });
-                        const canvasBuffer = await canvasBlob.arrayBuffer();
-                        const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
-                        base64Data = uint8ToBase64(canvasBufferBytes);
-                    } else {
-                        // Fallback - direct data URL (faster than blob conversion)
-                        const dataURL = canvas.toDataURL('image/png');
-                        base64Data = dataURL.split(',')[1];
-                    }
-
-                    templateTilesBuffers[templateTileName] = base64Data;
-                } catch (error) {
-                    // Final fallback
-                    const dataURL = canvas.toDataURL('image/png');
-                    templateTilesBuffers[templateTileName] = dataURL.split(',')[1];
-                }
-
-                // console.log(templateTiles);
+                const chunk = { width: drawSizeX, height: drawSizeY, pixels: chunkData };
+                templateTiles[templateTileName] = chunk;
+                templateTilesBuffers[templateTileName] = await encodeChunk(chunk);
 
                 pixelX += drawSizeX;
             }
@@ -318,8 +206,6 @@ export default class Template {
             pixelY += drawSizeY;
         }
 
-        // console.log('Template Tiles: ', templateTiles);
-        // console.log('Template Tiles Buffers: ', templateTilesBuffers);
         return { templateTiles, templateTilesBuffers };
     }
 
@@ -409,90 +295,6 @@ export default class Template {
      */
     setEnhancedColors(enhancedColorsArray) {
         this.enhancedColors = new Set(enhancedColorsArray || []);
-    }
-
-    /** Applies color filter to existing chunked tiles without requiring original file
-     * This method is used when templates are loaded from storage and don't have the original file
-     * @returns {Object} Updated chunked tiles with color filter applied
-     * @since 1.0.0
-     */
-    async applyColorFilterToExistingTiles() {
-        if (!this.chunked) {
-            throw new Error('No chunked tiles available to apply color filter');
-        }
-
-        const shreadSize = 3; // Must match the value used in createTemplateTiles
-        const updatedChunked = {};
-
-        for (const [tileName, bitmap] of Object.entries(this.chunked)) {
-            // Create a canvas to work with the existing tile
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-
-            // Get dimensions from the bitmap
-            let width, height;
-            if (bitmap.width !== undefined) {
-                width = bitmap.width;
-                height = bitmap.height;
-            } else {
-                // For canvas elements
-                width = bitmap.width || 300; // fallback
-                height = bitmap.height || 300;
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            context.imageSmoothingEnabled = false;
-
-            // Draw the existing bitmap to canvas
-            context.clearRect(0, 0, width, height);
-            context.drawImage(bitmap, 0, 0);
-
-            // Get image data to process pixels
-            const imageData = context.getImageData(0, 0, width, height);
-
-            // Process each pixel to apply color filter
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const pixelIndex = (y * width + x) * 4;
-
-                    // Only process center pixels of the 3x3 shread blocks (same logic as createTemplateTiles)
-                    if (x % shreadSize !== 1 || y % shreadSize !== 1) {
-                        continue; // Skip non-center pixels
-                    }
-
-                    // Get current pixel RGB values
-                    const r = imageData.data[pixelIndex];
-                    const g = imageData.data[pixelIndex + 1];
-                    const b = imageData.data[pixelIndex + 2];
-                    const alpha = imageData.data[pixelIndex + 3];
-
-                    // Skip transparent pixels
-                    if (alpha === 0) continue;
-
-                    // Check if this color is disabled
-                    const isDisabled = this.isColorDisabled([r, g, b]);
-
-                    if (isDisabled) {
-                        // Make disabled colors transparent (same as createTemplateTiles logic)
-                        imageData.data[pixelIndex + 3] = 0;
-                    }
-                }
-            }
-
-            // Put the processed image data back to canvas
-            context.putImageData(imageData, 0, 0);
-
-            // Create new bitmap from processed canvas
-            try {
-                updatedChunked[tileName] = await createImageBitmap(canvas);
-            } catch (error) {
-                console.warn('createImageBitmap failed for tile, using canvas directly');
-                updatedChunked[tileName] = canvas.cloneNode(true);
-            }
-        }
-
-        return updatedChunked;
     }
 
     /** Gets the saved crosshair color from storage

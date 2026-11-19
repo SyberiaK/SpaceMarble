@@ -1,8 +1,16 @@
 import Template from './Template.js';
-import { base64ToUint8, numberToEncoded, debugLog } from './utils.js';
+import { numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelOps.js';
-import { scanTemplateColorsAsync, countChunkPixelsAsync, encodeCanvasAsync, workersActive, encodeActive } from './tileWorkers.js';
+import {
+    scanTemplateColorsAsync,
+    countChunkPixelsAsync,
+    encodeCanvasAsync,
+    expandChunkAsync,
+    workersActive,
+    encodeActive,
+} from './tileWorkers.js';
+import { decodeChunk, countOpaquePixels } from './templateChunks.js';
 import { EmptyStatusGate } from './emptyStatusGate.js';
 
 // Profiling: run localStorage.setItem('smPerf','1') in the console and reload to enable
@@ -22,9 +30,9 @@ const PERF = (() => {
  * @example
  * // JSON structure for a template
  * {
- *   "whoami": "BlueMarble",
+ *   "whoami": "SpaceMarble",
  *   "scriptVersion": "1.13.0",
- *   "schemaVersion": "2.1.0",
+ *   "schemaVersion": "2.0.0",
  *   "templates": {
  *     "0 $Z": {
  *       "name": "My Template",
@@ -56,7 +64,7 @@ export default class TemplateManager {
         this.name = name; // Name of userscript
         this.version = version; // Version of userscript
         this.overlay = overlay; // The main instance of the Overlay class
-        this.templatesVersion = '1.0.0'; // Version of JSON schema
+        this.templatesVersion = '2.0.0'; // Version of JSON schema (2.x: tiles are PNGs of the template's real 1x pixels)
         this.userID = null; // The ID of the current user
         this.encodingBase = "!#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~"; // Characters to use for encoding/decoding
         this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
@@ -102,7 +110,7 @@ export default class TemplateManager {
      */
     async createJSON() {
         const json = {
-            whoami: 'BlueMarble', // Name of userscript
+            whoami: 'SpaceMarble', // Name of userscript
             scriptVersion: this.version, // Version of userscript
             schemaVersion: this.templatesVersion, // Version of JSON schema
             createdAt: new Date().toISOString(), // When the JSON was first created
@@ -370,18 +378,7 @@ export default class TemplateManager {
 
             // 1. Clear template's own caches (enhanced tiles, etc.)
             if (templateToDelete) {
-                // Dispose of template's chunked bitmaps to free memory
-                if (templateToDelete.chunked) {
-                    for (const [tileKey, bitmap] of Object.entries(templateToDelete.chunked)) {
-                        if (bitmap && typeof bitmap.close === 'function') {
-                            try {
-                                bitmap.close(); // Free GPU memory
-                            } catch (e) {
-                                // Bitmap already disposed or doesn't support close
-                            }
-                        }
-                    }
-                }
+                // The chunks are plain pixel arrays: they are freed together with the template
             }
 
             // 2. Clear tile progress cache to remove any cached data from this template
@@ -513,7 +510,8 @@ export default class TemplateManager {
 
                     return {
                         owner: template,
-                        bitmap: template.chunked[tile],
+                        chunk: template.chunked[tile], // 1x pixels; the 3x overlay (bitmap) is built below
+                        bitmap: null,
                         tileCoords: [coords[0], coords[1]],
                         pixelCoords: [coords[2], coords[3]],
                     };
@@ -579,6 +577,15 @@ export default class TemplateManager {
                 `Displaying ${templateCount} template${templateCount == 1 ? '' : 's'}.\nTotal pixels: ${pixelCountFormatted}`,
             );
         }
+
+        // Build the 3x overlays of this tile's template chunks. They only exist while the tile is processed:
+        // the templates themselves are kept at 1x
+        await Promise.all(
+            templatesToDraw.map(async (entry) => {
+                entry.bitmap = await expandChunkAsync(entry.chunk);
+            }),
+        );
+        perfMark('expand');
 
         const tileBitmap = await createImageBitmap(tileBlob);
 
@@ -1222,6 +1229,7 @@ export default class TemplateManager {
 
         perfMark('errormap');
         tileBitmap.close(); // Free the decoded tile; nothing below needs it
+        for (const entry of templatesToDraw) entry.bitmap.close(); // and the overlays
 
         // Encode as PNG, in a worker when possible (this empties the canvas)
         const outBlob = await encodeCanvasAsync(canvas, () => perfMark('encode-prep'));
@@ -1243,22 +1251,31 @@ export default class TemplateManager {
         debugLog(`Importing JSON...`);
         // Minimal logging for performance during template loading
 
-        // If the passed in JSON is a Blue Marble template object...
-        // Accept both legacy 'SkirkMarble' and current 'BlueMarble' whoami values
-        const validWhoami = ['SkirkMarble', 'BlueMarble', this.name?.replace(' ', '')].filter(Boolean);
-        if (validWhoami.includes(json?.whoami)) {
+        // If the passed in JSON is a template object of this format...
+        if (this.isSupportedTemplateFile(json)) {
             debugLog('Calling #parseBlueMarble...');
-            this.#parseBlueMarble(json); // ...parse the template object as Blue Marble
+            this.#parseBlueMarble(json); // ...parse it
         } else {
-            console.warn('❌ Not a valid BlueMarble JSON:', {
+            console.warn('❌ Not a supported template JSON:', {
                 whoami: json?.whoami,
-                expected: validWhoami,
+                schemaVersion: json?.schemaVersion,
                 hasTemplates: !!json?.templates,
             });
         }
     }
 
-    /** Parses the Blue Marble JSON object
+    /** Whether a template JSON object is in the format this version reads
+     * (made by SpaceMarble, schema 2.x: tiles are PNGs of the template's real 1x pixels).
+     * @param {Object} json - The parsed JSON
+     * @returns {boolean} True if it can be loaded
+     * @since 2.0.0
+     */
+    isSupportedTemplateFile(json) {
+        const major = parseInt(String(json?.schemaVersion ?? '0').split('.')[0], 10);
+        return json?.whoami === 'SpaceMarble' && major >= 2 && !!json?.templates;
+    }
+
+    /** Parses the template JSON object
      * @param {string} json - The JSON string to parse
      * @since 0.72.13
      */
@@ -1283,22 +1300,18 @@ export default class TemplateManager {
                     const displayName = templateValue.name || `Template ${sortID || ''}`; // Display name of the template
                     const coords = templateValue?.coords?.split(', ').map(Number); // "1, 2, 3, 4" -> [1, 2, 3, 4]
                     const tilesbase64 = templateValue.tiles;
-                    const templateTiles = {}; // Stores the template bitmap tiles for each tile.
+                    const templateTiles = {}; // Stores the template chunks (1x pixels) for each tile.
                     let totalPixelCount = 0; // Calculate total pixels across all tiles
 
-                    // Process tiles in parallel for better performance
-                    const tilePromises = Object.entries(tilesbase64).map(async ([tile, encodedTemplateBase64]) => {
-                        const templateUint8Array = base64ToUint8(encodedTemplateBase64); // Base 64 -> Uint8Array
-                        const templateBlob = new Blob([templateUint8Array], {
-                            type: 'image/png',
-                        }); // Uint8Array -> Blob
-                        const templateBitmap = await createImageBitmap(templateBlob); // Blob -> Bitmap
-                        return [tile, templateBitmap];
-                    });
+                    // Decode the chunks in parallel for better performance
+                    const tilePromises = Object.entries(tilesbase64).map(async ([tile, encodedChunk]) => [
+                        tile,
+                        await decodeChunk(encodedChunk),
+                    ]);
 
                     const processedTiles = await Promise.all(tilePromises);
-                    for (const [tile, bitmap] of processedTiles) {
-                        templateTiles[tile] = bitmap;
+                    for (const [tile, chunk] of processedTiles) {
+                        templateTiles[tile] = chunk;
                     }
 
                     const template = new Template({
@@ -1817,44 +1830,28 @@ export default class TemplateManager {
         const colorPalette = {};
 
         try {
-            // Analyze each tile bitmap to count colors (like Storage fork)
-            for (const [tileKey, tileBitmap] of Object.entries(template.chunked || {})) {
-                const tempCanvas = new OffscreenCanvas(tileBitmap.width, tileBitmap.height);
-                const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                tempCtx.imageSmoothingEnabled = false;
-                tempCtx.drawImage(tileBitmap, 0, 0);
-                const data = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height).data;
-                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
+            // Count the colors of every chunk's pixels
+            for (const chunk of Object.values(template.chunked || {})) {
+                const data = chunk.pixels;
 
-                // Count center pixels only (like Storage fork)
-                for (let y = 0; y < tileBitmap.height; y++) {
-                    for (let x = 0; x < tileBitmap.width; x++) {
-                        // Only count center pixels of 3x3 blocks
-                        if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
-                            continue;
-                        }
-
-                        const idx = (y * tileBitmap.width + x) * 4;
-                        const r = data[idx];
-                        const g = data[idx + 1];
-                        const b = data[idx + 2];
-                        const a = data[idx + 3];
-
-                        // Ignore transparent and semi-transparent
-                        if (a < 64) {
-                            continue;
-                        }
-                        // Ignore #deface explicitly
-                        if (r === 222 && g === 250 && b === 206) {
-                            continue;
-                        }
-
-                        const colorKey = `${r},${g},${b}`;
-                        if (!colorPalette[colorKey]) {
-                            colorPalette[colorKey] = { count: 0, enabled: true };
-                        }
-                        colorPalette[colorKey].count++;
+                for (let idx = 0; idx < data.length; idx += 4) {
+                    // Ignore transparent and semi-transparent
+                    if (data[idx + 3] < 64) {
+                        continue;
                     }
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+                    // Ignore #deface explicitly
+                    if (r === 222 && g === 250 && b === 206) {
+                        continue;
+                    }
+
+                    const colorKey = `${r},${g},${b}`;
+                    if (!colorPalette[colorKey]) {
+                        colorPalette[colorKey] = { count: 0, enabled: true };
+                    }
+                    colorPalette[colorKey].count++;
                 }
             }
 
@@ -2159,299 +2156,6 @@ export default class TemplateManager {
         }
     }
 
-    /** Checks if a color has wrong pixels in a specific tile
-     * @param {string} colorKey - Color key in format "r,g,b"
-     * @param {string} tileKey - Tile key in format "x,y"
-     * @returns {boolean} Whether the color has wrong pixels in this tile
-     * @since 1.0.0
-     */
-    isColorWrongInTile(colorKey, tileKey) {
-        const tileProgress = this.tileProgress.get(tileKey);
-        if (!tileProgress || !tileProgress.colorBreakdown) {
-            return false;
-        }
-
-        const colorData = tileProgress.colorBreakdown[colorKey];
-        const hasWrongPixels = colorData && colorData.wrong > 0;
-
-        // Only log once per color per tile to avoid spam
-        if (this.enhanceWrongColors && hasWrongPixels && !this._loggedWrongColors) {
-            this._loggedWrongColors = this._loggedWrongColors || new Set();
-            const logKey = `${colorKey}-${tileKey}`;
-            if (!this._loggedWrongColors.has(logKey)) {
-                debugLog(`Wrong Color Detection - Color ${colorKey} has ${colorData.wrong} wrong pixels in tile ${tileKey}`);
-                this._loggedWrongColors.add(logKey);
-            }
-        }
-
-        return hasWrongPixels;
-    }
-
-    /** Gets wrong pixels for selected colors in a specific tile
-     * @param {string} tileCoords - Tile coordinates "x,y"
-     * @param {Template} template - Template object
-     * @returns {Set<string>} Set of pixel coordinates that are wrong for selected colors
-     * @since 1.0.0
-     */
-    getWrongPixelsForSelectedColors(tileCoords, template) {
-        const wrongPixels = new Set();
-
-        try {
-            const tileProgress = this.tileProgress.get(tileCoords);
-            if (!tileProgress || !tileProgress.colorBreakdown) {
-                return wrongPixels;
-            }
-
-            // Get selected colors (enhanced colors)
-            const selectedColors = Array.from(template.enhancedColors);
-
-            if (selectedColors.length === 0) {
-                //  console.log(`🎯 [Wrong Color Enhancement] No colors selected for enhancement`);
-                return wrongPixels;
-            }
-
-            debugLog(`Wrong Color Enhancement - Checking wrong pixels for selected colors: ${selectedColors.join(', ')}`);
-
-            // For each selected color, find wrong pixels
-            for (const colorKey of selectedColors) {
-                const colorData = tileProgress.colorBreakdown[colorKey];
-                if (colorData && colorData.wrong > 0) {
-                    debugLog(`Wrong Color Enhancement - Color ${colorKey} has ${colorData.wrong} wrong pixels`);
-
-                    // Find the actual wrong pixel coordinates for this color
-                    const wrongCoords = this.findWrongPixelCoordinates(tileCoords, colorKey, template);
-                    wrongCoords.forEach((coord) => wrongPixels.add(coord));
-                }
-            }
-
-            debugLog(`Wrong Color Enhancement - Total wrong pixels to enhance: ${wrongPixels.size}`);
-        } catch (error) {
-            console.warn('Failed to get wrong pixels for selected colors:', error);
-        }
-
-        return wrongPixels;
-    }
-
-    /** Finds wrong pixel coordinates for a specific color in a tile
-     * @param {string} tileCoords - Tile coordinates "x,y"
-     * @param {string} colorKey - Color key "r,g,b"
-     * @param {Template} template - Template object
-     * @returns {Set<string>} Set of pixel coordinates that are wrong for this color
-     * @since 1.0.0
-     */
-    findWrongPixelCoordinates(tileCoords, colorKey, template) {
-        const wrongCoords = new Set();
-
-        try {
-            // Parse color
-            const [targetR, targetG, targetB] = colorKey.split(',').map(Number);
-
-            // Find template tiles for this tile coordinate
-            const matchingTiles = Object.keys(template.chunked).filter((tile) => tile.startsWith(tileCoords));
-
-            for (const tileKey of matchingTiles) {
-                const tileBitmap = template.chunked[tileKey];
-                const coords = tileKey.split(',');
-                const pixelCoords = [coords[2], coords[3]];
-
-                // Get template bitmap data
-                const tempCanvas = new OffscreenCanvas(tileBitmap.width, tileBitmap.height);
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.imageSmoothingEnabled = false;
-                tempCtx.drawImage(tileBitmap, 0, 0);
-                const templateData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height).data;
-                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
-
-                // Check each pixel for this color
-                for (let y = 0; y < tileBitmap.height; y++) {
-                    for (let x = 0; x < tileBitmap.width; x++) {
-                        // Only check center pixels of 3x3 blocks
-                        if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
-                            continue;
-                        }
-
-                        const i = (y * tileBitmap.width + x) * 4;
-                        const r = templateData[i];
-                        const g = templateData[i + 1];
-                        const b = templateData[i + 2];
-                        const a = templateData[i + 3];
-
-                        // Skip transparent pixels
-                        if (a < 64) continue;
-
-                        // Check if this is the color we're looking for
-                        if (r === targetR && g === targetG && b === targetB) {
-                            // Calculate global coordinates
-                            const globalX = Number(pixelCoords[0]) * this.drawMult + x;
-                            const globalY = Number(pixelCoords[1]) * this.drawMult + y;
-
-                            // Add to wrong pixels set (we'll verify against canvas later)
-                            wrongCoords.add(`${globalX},${globalY}`);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('Failed to find wrong pixel coordinates:', error);
-        }
-
-        return wrongCoords;
-    }
-
-    /** Applies crosshair to wrong pixels
-     * @param {Uint8ClampedArray} data - Image data to modify
-     * @param {Uint8ClampedArray} originalData - Original template data
-     * @param {Set<string>} wrongPixels - Set of wrong pixel coordinates
-     * @param {number} width - Image width
-     * @param {number} height - Image height
-     * @param {Object} template - Template object
-     * @param {CanvasRenderingContext2D} context - Canvas context
-     * @param {Uint8ClampedArray} canvasData - Current canvas data
-     * @since 1.0.0
-     */
-    applyCrosshairToWrongPixels(data, originalData, wrongPixels, width, height, template, context, canvasData) {
-        let crosshairCount = 0;
-        const crosshairColor = this.getCrosshairColor();
-
-        debugLog(`Wrong Color Enhancement - Applying crosshair to ${wrongPixels.size} wrong pixels`);
-
-        for (const pixelCoord of wrongPixels) {
-            const [px, py] = pixelCoord.split(',').map(Number);
-
-            // Convert global coordinates to local template coordinates
-            const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
-            const templateOffsetY = Number(template.pixelCoords[1]) * this.drawMult;
-            const localX = px - templateOffsetX;
-            const localY = py - templateOffsetY;
-
-            // Check bounds
-            if (localX < 0 || localX >= width || localY < 0 || localY >= height) {
-                continue;
-            }
-
-            // Apply crosshair around the wrong pixel
-            const crosshairOffsets = [
-                [0, -1],
-                [0, 1],
-                [-1, 0],
-                [1, 0], // Orthogonal only
-            ];
-
-            for (const [dx, dy] of crosshairOffsets) {
-                const x = localX + dx;
-                const y = localY + dy;
-
-                // Quick bounds check
-                if (x < 0 || x >= width || y < 0 || y >= height) continue;
-
-                const i = (y * width + x) * 4;
-
-                // Only modify transparent template pixels
-                if (originalData[i + 3] !== 0) continue;
-
-                // Check if pixel is already painted on canvas
-                const canvasX = x + templateOffsetX;
-                const canvasY = y + templateOffsetY;
-                if (canvasX >= 0 && canvasX < context.canvas.width && canvasY >= 0 && canvasY < context.canvas.height) {
-                    const canvasIndex = (canvasY * context.canvas.width + canvasX) * 4;
-                    if (canvasData[canvasIndex + 3] > 0) continue; // Skip if already painted
-                }
-
-                // Apply crosshair
-                data[i] = crosshairColor.rgb[0];
-                data[i + 1] = crosshairColor.rgb[1];
-                data[i + 2] = crosshairColor.rgb[2];
-                data[i + 3] = crosshairColor.alpha;
-                crosshairCount++;
-            }
-        }
-
-        debugLog(`Wrong Color Enhancement - Applied ${crosshairCount} crosshair pixels`);
-    }
-
-    /** Detects wrong pixels by comparing template with current canvas state
-     * @param {string} colorKey - Color key in format "r,g,b"
-     * @param {string} tileKey - Tile key in format "x,y"
-     * @param {HTMLCanvasElement} canvas - Current canvas element
-     * @param {ImageBitmap} templateBitmap - Template bitmap for this tile
-     * @param {Array<number>} templateOffset - Template offset [x, y]
-     * @returns {Set<string>} Set of pixel coordinates that are wrong
-     * @since 1.0.0
-     */
-    detectWrongPixelsInTile(colorKey, tileKey, canvas, templateBitmap, templateOffset) {
-        const wrongPixels = new Set();
-
-        try {
-            // Parse color key
-            const [targetR, targetG, targetB] = colorKey.split(',').map(Number);
-
-            // Get template bitmap data
-            const tempCanvas = new OffscreenCanvas(templateBitmap.width, templateBitmap.height);
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.imageSmoothingEnabled = false;
-            tempCtx.drawImage(templateBitmap, 0, 0);
-            const templateData = tempCtx.getImageData(0, 0, templateBitmap.width, templateBitmap.height).data;
-            tempCanvas.width = tempCanvas.height = 0; // release memory instantly
-
-            // Get canvas data for comparison
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            const canvasData = ctx.getImageData(templateOffset[0], templateOffset[1], templateBitmap.width, templateBitmap.height).data;
-
-            let wrongPixelCount = 0;
-
-            // Compare each pixel
-            for (let y = 0; y < templateBitmap.height; y++) {
-                for (let x = 0; x < templateBitmap.width; x++) {
-                    // Only check center pixels of 3x3 blocks
-                    if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
-                        continue;
-                    }
-
-                    const i = (y * templateBitmap.width + x) * 4;
-
-                    // Get template color
-                    const templateR = templateData[i];
-                    const templateG = templateData[i + 1];
-                    const templateB = templateData[i + 2];
-                    const templateA = templateData[i + 3];
-
-                    // Skip transparent template pixels
-                    if (templateA < 64) continue;
-
-                    // Check if this is the color we're looking for
-                    if (templateR === targetR && templateG === targetG && templateB === targetB) {
-                        // Get canvas color at same position
-                        const canvasR = canvasData[i];
-                        const canvasG = canvasData[i + 1];
-                        const canvasB = canvasData[i + 2];
-                        const canvasA = canvasData[i + 3];
-
-                        // Check if pixel is wrong (different color or unpainted)
-                        if (canvasA < 64 || canvasR !== targetR || canvasG !== targetG || canvasB !== targetB) {
-                            wrongPixels.add(`${x},${y}`);
-                            wrongPixelCount++;
-
-                            // Debug log first few wrong pixels
-                            if (wrongPixelCount <= 5) {
-                                debugLog(
-                                    `Wrong Pixel Detection - Pixel (${x},${y}) - Template: ${targetR},${targetG},${targetB} vs Canvas: ${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (wrongPixelCount > 0) {
-                debugLog(`Wrong Pixel Detection - Found ${wrongPixelCount} wrong pixels for color ${colorKey} in tile ${tileKey}`);
-            }
-        } catch (error) {
-            console.warn('Failed to detect wrong pixels:', error);
-        }
-
-        return wrongPixels;
-    }
-
     /** Build a screenshot covering the active template's pixel area by fetching raw tiles and composing them.
      * The screenshot shows the current board (not overlay) for the area from the template's top-left pixel
      * to its bottom-right pixel, snapped to tile boundaries as needed.
@@ -2641,6 +2345,13 @@ export default class TemplateManager {
     async importFromObject(json, { merge = true } = {}) {
         if (!json?.templates || typeof json.templates !== 'object') return;
 
+        if (!this.isSupportedTemplateFile(json)) {
+            // Files from older versions keep their tiles at 3x size and cannot be read as 1x chunks
+            const error = new Error('This template file was made by an older version and cannot be imported');
+            error.name = 'TemplateFormatError';
+            throw error;
+        }
+
         // console.log('🔍 [Import] Starting importFromObject...');
         debugLog('Import - Current templatesArray length:', this.templatesArray?.length || 0);
         // console.log('🔍 [Import] Current templatesJSON templates:', Object.keys(this.templatesJSON?.templates || {}));
@@ -2692,31 +2403,9 @@ export default class TemplateManager {
                 let totalPixelCount = 0;
 
                 for (const [tile, b64] of Object.entries(tilesbase64)) {
-                    const templateUint8Array = base64ToUint8(b64);
-                    const templateBlob = new Blob([templateUint8Array], { type: 'image/png' });
-                    const templateBitmap = await createImageBitmap(templateBlob);
-                    templateTiles[tile] = templateBitmap;
-
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = templateBitmap.width;
-                        canvas.height = templateBitmap.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.imageSmoothingEnabled = false;
-                        ctx.drawImage(templateBitmap, 0, 0);
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const data = imageData.data;
-
-                        for (let y = 0; y < canvas.height; y++) {
-                            for (let x = 0; x < canvas.width; x++) {
-                                if (x % this.drawMult !== 1 || y % this.drawMult !== 1) continue;
-                                const i = (y * canvas.width + x) * 4;
-                                if (data[i + 3] > 0) totalPixelCount++;
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('Failed to count pixels for tile during import:', tile, err);
-                    }
+                    const chunk = await decodeChunk(b64);
+                    templateTiles[tile] = chunk;
+                    totalPixelCount += countOpaquePixels(chunk);
                 }
 
                 const template = new Template({
@@ -2726,7 +2415,8 @@ export default class TemplateManager {
                     coords,
                 });
                 template.chunked = templateTiles;
-                template.pixelCount = totalPixelCount;
+                // Keep the count the file was saved with (what creating the template gave); count only if it is missing
+                template.pixelCount = this.templatesJSON.templates[newKey].pixelCount || totalPixelCount;
 
                 if (!this.templatesJSON.templates[newKey].pixelCount) {
                     this.templatesJSON.templates[newKey].pixelCount = totalPixelCount;
@@ -2794,7 +2484,7 @@ export default class TemplateManager {
     exportTemplateJSON(templateKey) {
         if (!this.templatesJSON?.templates?.[templateKey]) return null;
         const wrapper = {
-            whoami: 'BlueMarble',
+            whoami: 'SpaceMarble',
             scriptVersion: this.version,
             schemaVersion: this.templatesVersion,
             createdAt: new Date().toISOString(),
@@ -2828,7 +2518,7 @@ export default class TemplateManager {
     exportAllTemplatesJSON() {
         if (!this.templatesJSON?.templates) return null;
         const wrapper = {
-            whoami: 'BlueMarble',
+            whoami: 'SpaceMarble',
             scriptVersion: this.version,
             schemaVersion: this.templatesVersion,
             createdAt: this.templatesJSON.createdAt || new Date().toISOString(),
@@ -2848,7 +2538,7 @@ export default class TemplateManager {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `BlueMarble-templates.json`;
+        a.download = `SpaceMarble-templates.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

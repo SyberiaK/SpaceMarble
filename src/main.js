@@ -2692,7 +2692,9 @@ function showImportDialog(instance) {
             instance.handleDisplayStatus(`Imported templates from ${file.name}!`);
         } catch (e) {
             console.error(e);
-            instance.handleDisplayStatus('Failed to import JSON - please check the file format');
+            instance.handleDisplayStatus(
+                e?.name === 'TemplateFormatError' ? e.message : 'Failed to import JSON - please check the file format',
+            );
         }
     };
 
@@ -4989,26 +4991,26 @@ function buildOverlayMain() {
                             try {
                                 const tiles = Object.keys(t.chunked || {});
                                 if (tiles.length > 0) {
-                                    let minScaledX = Infinity,
-                                        minScaledY = Infinity,
-                                        maxScaledX = 0,
-                                        maxScaledY = 0;
-                                    const scale = templateManager.drawMult || 3;
-                                    const tileSizeScaled = (templateManager.tileSize || 1000) * scale;
+                                    let minX = Infinity,
+                                        minY = Infinity,
+                                        maxX = 0,
+                                        maxY = 0;
+                                    const tileSize = templateManager.tileSize || 1000;
                                     for (const key of tiles) {
-                                        const bmp = t.chunked[key];
+                                        // A chunk holds the template's pixels at their real size (1x)
+                                        const chunk = t.chunked[key];
                                         const [tX, tY, pX, pY] = key.split(',').map(Number);
-                                        const startX = tX * tileSizeScaled + pX * scale;
-                                        const startY = tY * tileSizeScaled + pY * scale;
-                                        const endX = startX + bmp.width;
-                                        const endY = startY + bmp.height;
-                                        if (startX < minScaledX) minScaledX = startX;
-                                        if (startY < minScaledY) minScaledY = startY;
-                                        if (endX > maxScaledX) maxScaledX = endX;
-                                        if (endY > maxScaledY) maxScaledY = endY;
+                                        const startX = tX * tileSize + pX;
+                                        const startY = tY * tileSize + pY;
+                                        const endX = startX + chunk.width;
+                                        const endY = startY + chunk.height;
+                                        if (startX < minX) minX = startX;
+                                        if (startY < minY) minY = startY;
+                                        if (endX > maxX) maxX = endX;
+                                        if (endY > maxY) maxY = endY;
                                     }
-                                    t.imageWidth = Math.round((maxScaledX - minScaledX) / scale);
-                                    t.imageHeight = Math.round((maxScaledY - minScaledY) / scale);
+                                    t.imageWidth = maxX - minX;
+                                    t.imageHeight = maxY - minY;
                                 }
                             } catch (_) {}
                         }

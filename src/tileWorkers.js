@@ -11,7 +11,7 @@
  * @since 1.0.1
  */
 
-import { scanTemplateColors, countChunkPixels } from './tilePixelOps.js';
+import { scanTemplateColors, countChunkPixels, expandChunkTo3x } from './tilePixelOps.js';
 import { debugLog } from './utils.js';
 
 /** Upper bound on the number of workers. A view shows about 8 to 9 tiles, and encoding one takes the longest. */
@@ -27,8 +27,9 @@ const STARTUP_TIMEOUT_MS = 3000;
  * by the main thread would not be.
  * @param {Function} scanFn - scanTemplateColors
  * @param {Function} countFn - countChunkPixels
+ * @param {Function} expandFn - expandChunkTo3x
  */
-function workerEntry(scanFn, countFn) {
+function workerEntry(scanFn, countFn, expandFn) {
     const scan = (a) => {
         const data = new Uint8ClampedArray(a.data);
         const originalData = a.hasEnhancedColors ? new Uint8ClampedArray(data) : null;
@@ -109,6 +110,14 @@ function workerEntry(scanFn, countFn) {
         }
     };
 
+    // Builds the 3x overlay of a template chunk as an ImageBitmap
+    const expand = async (a) => {
+        const out = new Uint8ClampedArray(a.width * 3 * a.height * 3 * 4);
+        expandFn(a.pixels, a.width, a.height, out);
+        const bitmap = await createImageBitmap(new ImageData(out, a.width * 3, a.height * 3));
+        return { result: { bitmap }, transfer: [bitmap] };
+    };
+
     self.onmessage = async (event) => {
         const { id, type, args } = event.data;
         try {
@@ -122,6 +131,9 @@ function workerEntry(scanFn, countFn) {
                     break;
                 case 'encode':
                     out = await encode(args);
+                    break;
+                case 'expand':
+                    out = await expand(args);
                     break;
                 case 'ping':
                     out = { result: 'pong' };
@@ -140,7 +152,7 @@ function workerEntry(scanFn, countFn) {
  * @returns {string} JavaScript source of the worker
  */
 function buildWorkerSource() {
-    return `(${workerEntry.toString()})(${scanTemplateColors.toString()}, ${countChunkPixels.toString()});`;
+    return `(${workerEntry.toString()})(${scanTemplateColors.toString()}, ${countChunkPixels.toString()}, ${expandChunkTo3x.toString()});`;
 }
 
 /** Default worker factory: a worker from a Blob URL.
@@ -175,6 +187,18 @@ function exactBuffer(array) {
         return array.buffer;
     }
     return array.slice().buffer;
+}
+
+/** Reads the pixels of an ImageBitmap and closes it.
+ * @param {ImageBitmap} bitmap - The bitmap
+ * @returns {Uint8ClampedArray} RGBA pixels
+ */
+function readBitmapPixels(bitmap) {
+    const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d', { willReadFrequently: true });
+    context.drawImage(bitmap, 0, 0);
+    const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    bitmap.close();
+    return pixels;
 }
 
 /** Small fixed input used to verify that a worker computes exactly what the main thread does.
@@ -217,6 +241,7 @@ class TileWorkerPool {
         this.nextId = 1;
         this.available = false;
         this.encodeAvailable = false; // whether workers can also encode PNGs (verified separately at start-up)
+        this.expandAvailable = false; // whether workers can also build template overlays (verified separately)
         this.readyPromise = null;
     }
 
@@ -245,6 +270,13 @@ class TileWorkerPool {
                             this.encodeAvailable = false;
                             console.warn('[sm-workers] Tile encoding stays on the main thread:', error);
                         }
+                    }
+
+                    try {
+                        this.expandAvailable = await withTimeout(this.#verifyExpand(), STARTUP_TIMEOUT_MS);
+                    } catch (error) {
+                        this.expandAvailable = false;
+                        console.warn('[sm-workers] Template overlays stay on the main thread:', error);
                     }
                     return true;
                 })
@@ -350,6 +382,35 @@ class TileWorkerPool {
             const actual = context.getImageData(0, 0, width, height).data;
             for (let i = 0; i < expected.length; i++) {
                 if (actual[i] !== expected[i]) throw new Error('encode self-test mismatch');
+            }
+        }
+        return true;
+    }
+
+    /** Checks that every worker builds the same template overlay as the main thread does.
+     * @returns {Promise<boolean>} Whether the browser supports it and all workers passed
+     */
+    async #verifyExpand() {
+        if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap !== 'function' || typeof ImageData === 'undefined') {
+            return false;
+        }
+
+        // 3x2 template pixels: opaque, #deface, transparent / opaque, #deface, translucent black
+        const width = 3;
+        const height = 2;
+        const pixels = new Uint8ClampedArray([
+            200, 10, 30, 255, 222, 250, 206, 255, 0, 0, 0, 0,
+            5, 90, 160, 255, 222, 250, 206, 255, 0, 0, 0, 77,
+        ]);
+        const expected = new Uint8ClampedArray(width * 3 * height * 3 * 4);
+        expandChunkTo3x(pixels, width, height, expected);
+
+        for (const slot of this.slots) {
+            const reply = await this.#runOn(slot, 'expand', { pixels: pixels.slice(), width, height }, []);
+            const actual = readBitmapPixels(reply.bitmap);
+            if (actual.length !== expected.length) throw new Error('expand self-test returned the wrong size');
+            for (let i = 0; i < expected.length; i++) {
+                if (actual[i] !== expected[i]) throw new Error('expand self-test mismatch');
             }
         }
         return true;
@@ -475,6 +536,11 @@ export function initTileWorkers(options = {}) {
 /** Whether workers are currently in use (false while starting, or when they are unavailable or turned off). */
 export function workersActive() {
     return Boolean(pool && pool.available);
+}
+
+/** Whether template overlays are currently built in the workers. */
+export function expandActive() {
+    return Boolean(pool && pool.available && pool.expandAvailable);
 }
 
 /** Whether finished tiles are currently encoded in the workers. */
@@ -610,4 +676,25 @@ export async function encodeCanvasAsync(canvas, onPrepared) {
     }
 
     return canvas.convertToBlob({ type: 'image/png' });
+}
+
+/** Builds the 3x overlay of a template chunk, as an ImageBitmap the caller has to close.
+ * In a worker when possible: the chunk's pixels are copied, not moved, so the chunk stays intact.
+ * @param {{width: number, height: number, pixels: Uint8ClampedArray}} chunk - The 1x template chunk
+ * @returns {Promise<ImageBitmap>} The overlay, (width * 3) x (height * 3) pixels
+ */
+export async function expandChunkAsync(chunk) {
+    if (pool && pool.available && pool.expandAvailable) {
+        try {
+            const reply = await pool.run('expand', { pixels: chunk.pixels, width: chunk.width, height: chunk.height }, []);
+            return reply.bitmap;
+        } catch (error) {
+            console.warn('[sm-workers] A worker could not build a template overlay, building it on the main thread:', error);
+            pool.expandAvailable = false;
+        }
+    }
+
+    const out = new Uint8ClampedArray(chunk.width * 3 * chunk.height * 3 * 4);
+    expandChunkTo3x(chunk.pixels, chunk.width, chunk.height, out);
+    return createImageBitmap(new ImageData(out, chunk.width * 3, chunk.height * 3));
 }

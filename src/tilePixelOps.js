@@ -1,7 +1,7 @@
 /** Pure pixel loops used while drawing template tiles.
  * No DOM access: the same functions run on the main thread (fallback) and inside Web Workers,
  * where they are inserted into the worker script with Function.prototype.toString().
- * Because of that, scanTemplateColors and countChunkPixels must stay self-contained:
+ * Because of that, scanTemplateColors, countChunkPixels and expandChunkTo3x must stay self-contained:
  * no references to anything outside their own parameters and locals.
  * @since 1.0.1
  */
@@ -157,6 +157,49 @@ export function buildColorBreakdown(colorStats) {
         colorBreakdown[`${key >> 16},${(key >> 8) & 255},${key & 255}`] = entry;
     }
     return colorBreakdown;
+}
+
+/** Expands a 1x template chunk into the 3x overlay that is drawn on a tile.
+ * Every template pixel becomes the center pixel of a 3x3 cell and the rest of the cell stays transparent.
+ * The #deface color (222, 250, 206) is drawn as a translucent black checkerboard over all nine pixels of its cell.
+ * The checkerboard parity is relative to the chunk's own top left corner.
+ * Must stay self-contained (see the note at the top of this file).
+ * @param {Uint8ClampedArray} pixels - RGBA pixels of the 1x chunk
+ * @param {number} width - Chunk width in template pixels
+ * @param {number} height - Chunk height in template pixels
+ * @param {Uint8ClampedArray} out - Zero-filled RGBA array of (width * 3) * (height * 3) pixels that receives the overlay
+ */
+export function expandChunkTo3x(pixels, width, height, out) {
+    const outWidth = width * 3;
+
+    for (let py = 0; py < height; py++) {
+        for (let px = 0; px < width; px++) {
+            const source = (py * width + px) * 4;
+            const r = pixels[source];
+            const g = pixels[source + 1];
+            const b = pixels[source + 2];
+
+            if (r === 222 && g === 250 && b === 206) {
+                for (let sy = 0; sy < 3; sy++) {
+                    const y = py * 3 + sy;
+                    for (let sx = 0; sx < 3; sx++) {
+                        const x = px * 3 + sx;
+                        if ((x + y) % 2 === 0) out[(y * outWidth + x) * 4 + 3] = 32; // translucent black
+                    }
+                }
+                continue;
+            }
+
+            const a = pixels[source + 3];
+            if (a === 0) continue;
+
+            const target = ((py * 3 + 1) * outWidth + px * 3 + 1) * 4;
+            out[target] = r;
+            out[target + 1] = g;
+            out[target + 2] = b;
+            out[target + 3] = a;
+        }
+    }
 }
 
 /** Merges the stats of one template chunk into the running per-tile stats.
