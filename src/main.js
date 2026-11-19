@@ -9130,9 +9130,6 @@ async function refreshTemplateDisplay() {
             const currentTemplate = templateManager.templatesArray[0];
             debugLog('Current disabled colors:', currentTemplate.getDisabledColors());
 
-            // Invalidate enhanced cache when colors change
-            currentTemplate.invalidateEnhancedCache();
-
             // Disable templates first to clear the display
             templateManager.setTemplatesShouldBeDrawn(false);
 
@@ -12749,15 +12746,6 @@ function buildCrosshairSettingsOverlay() {
                 // Update mini tracker visibility and restart auto-update
                 updateMiniTracker();
                 startMiniTrackerAutoUpdate();
-
-                // Force invalidate template caches to ensure borders are applied
-                if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
-                    templateManager.templatesArray.forEach((template) => {
-                        if (template.invalidateEnhancedCache) {
-                            template.invalidateEnhancedCache();
-                        }
-                    });
-                }
 
                 // Refresh template display to apply new settings
                 await refreshTemplateDisplay();

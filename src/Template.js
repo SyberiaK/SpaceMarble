@@ -374,7 +374,6 @@ export default class Template {
     enableColorEnhanced(rgbColor) {
         const colorKey = `${rgbColor[0]},${rgbColor[1]},${rgbColor[2]}`;
         this.enhancedColors.add(colorKey);
-        this.invalidateEnhancedCache(); // Regenerate cache when enhanced colors change
     }
 
     /** Disables enhanced mode for a specific color
@@ -384,7 +383,6 @@ export default class Template {
     disableColorEnhanced(rgbColor) {
         const colorKey = `${rgbColor[0]},${rgbColor[1]},${rgbColor[2]}`;
         this.enhancedColors.delete(colorKey);
-        this.invalidateEnhancedCache(); // Regenerate cache when enhanced colors change
     }
 
     /** Checks if a specific color has enhanced mode enabled
@@ -411,7 +409,6 @@ export default class Template {
      */
     setEnhancedColors(enhancedColorsArray) {
         this.enhancedColors = new Set(enhancedColorsArray || []);
-        this.invalidateEnhancedCache();
     }
 
     /** Applies color filter to existing chunked tiles without requiring original file
