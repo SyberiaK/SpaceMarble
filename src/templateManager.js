@@ -952,11 +952,14 @@ export default class TemplateManager {
                 }
 
                 perfMark('enh-crosshair');
-                // Put the processed image data back
+                // The canvas was released after the first read,
+                // so it needs its size back (a 0x0 canvas cannot be drawn)
+                tempCanvas.width = width;
+                tempCanvas.height = height;
                 tempCtx.putImageData(imageData, 0, 0);
 
-                // Draw the processed template
                 context.drawImage(tempCanvas, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+                tempCanvas.width = tempCanvas.height = 0; // release memory instantly
                 perfMark('enh-draw');
             }
         }
