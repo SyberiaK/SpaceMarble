@@ -659,7 +659,7 @@ async function loadTemplates() {
     try {
         if (typeof GM !== 'undefined' && GM.getValue) {
             // Check if data is chunked
-            const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+            const chunkCount = await GM.getValue('smTemplates_chunkCount', 0);
             let data;
 
             if (chunkCount > 0) {
@@ -669,7 +669,7 @@ async function loadTemplates() {
                 let corruptedChunks = 0;
 
                 for (let i = 0; i < chunkCount; i++) {
-                    const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
+                    const chunk = await GM.getValue(`smTemplates_part_${i}`, '');
                     if (!chunk) {
                         corruptedChunks++;
                         console.error(`❌ Missing TM chunk ${i}/${chunkCount}`);
@@ -686,7 +686,7 @@ async function loadTemplates() {
                 debugLog(`TM chunked data loaded: ${data.length} chars`);
             } else {
                 // Load regular single data
-                data = await GM.getValue('bmTemplates', '{}');
+                data = await GM.getValue('smTemplates', '{}');
                 debugLog(`TM single data loaded: ${data.length} chars`);
             }
 
@@ -713,7 +713,7 @@ async function loadTemplates() {
             }
         } else if (typeof GM_getValue !== 'undefined') {
             // Check if data is chunked (legacy)
-            const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
+            const chunkCount = GM_getValue('smTemplates_chunkCount', 0);
             let data;
 
             if (chunkCount > 0) {
@@ -723,7 +723,7 @@ async function loadTemplates() {
                 let corruptedChunks = 0;
 
                 for (let i = 0; i < chunkCount; i++) {
-                    const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
+                    const chunk = GM_getValue(`smTemplates_part_${i}`, '');
                     if (!chunk) {
                         corruptedChunks++;
                         console.error(`❌ Missing TM legacy chunk ${i}/${chunkCount}`);
@@ -740,7 +740,7 @@ async function loadTemplates() {
                 debugLog(`TM legacy chunked data loaded: ${data.length} chars`);
             } else {
                 // Load regular single data
-                data = GM_getValue('bmTemplates', '{}');
+                data = GM_getValue('smTemplates', '{}');
                 debugLog(`TM legacy single data loaded: ${data.length} chars`);
             }
 
@@ -772,7 +772,7 @@ async function loadTemplates() {
         // Fallback to localStorage with enhanced error handling
         try {
             debugLog('Falling back to localStorage...');
-            const lsChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+            const lsChunkCount = parseInt(localStorage.getItem('smTemplates_chunkCount') || '0');
             let data;
 
             if (lsChunkCount > 0) {
@@ -782,7 +782,7 @@ async function loadTemplates() {
                 let corruptedChunks = 0;
 
                 for (let i = 0; i < lsChunkCount; i++) {
-                    const chunk = localStorage.getItem(`bmTemplates_part_${i}`) || '';
+                    const chunk = localStorage.getItem(`smTemplates_part_${i}`) || '';
                     if (!chunk) {
                         corruptedChunks++;
                         console.error(`❌ Missing LS chunk ${i}/${lsChunkCount}`);
@@ -798,7 +798,7 @@ async function loadTemplates() {
                 data = combinedData;
                 debugLog(`LS chunked data loaded: ${data.length} chars`);
             } else {
-                data = localStorage.getItem('bmTemplates') || '{}';
+                data = localStorage.getItem('smTemplates') || '{}';
                 debugLog(`LS single data loaded: ${data.length} chars`);
             }
 
@@ -853,7 +853,7 @@ async function loadTemplates() {
 
             if (storageSource.includes('TamperMonkey')) {
                 // Try localStorage as backup
-                const lsBackup = localStorage.getItem('bmTemplates');
+                const lsBackup = localStorage.getItem('smTemplates');
                 if (lsBackup) {
                     backupData = JSON.parse(lsBackup);
                 }
@@ -861,7 +861,7 @@ async function loadTemplates() {
                 // Try TamperMonkey as backup
                 let tmBackup = null;
                 if (typeof GM_getValue !== 'undefined') {
-                    tmBackup = GM_getValue('bmTemplates', null);
+                    tmBackup = GM_getValue('smTemplates', null);
                 }
                 if (tmBackup) {
                     backupData = JSON.parse(tmBackup);
@@ -933,7 +933,7 @@ async function attemptEmergencyRecovery() {
     try {
         // Clear TamperMonkey
         if (typeof GM !== 'undefined' && GM.deleteValue) {
-            const tmKeys = ['bmTemplates', 'bmTemplates_timestamp', 'bmTemplates_chunkCount'];
+            const tmKeys = ['smTemplates', 'smTemplates_timestamp', 'smTemplates_chunkCount'];
             for (const key of tmKeys) {
                 try {
                     await GM.deleteValue(key);
@@ -943,13 +943,13 @@ async function attemptEmergencyRecovery() {
             // Clear potential chunks (up to 50)
             for (let i = 0; i < 50; i++) {
                 try {
-                    await GM.deleteValue(`bmTemplates_part_${i}`);
+                    await GM.deleteValue(`smTemplates_part_${i}`);
                 } catch (_) {}
             }
         }
 
         // Clear localStorage
-        const lsKeys = ['bmTemplates', 'bmTemplates_timestamp', 'bmTemplates_chunkCount'];
+        const lsKeys = ['smTemplates', 'smTemplates_timestamp', 'smTemplates_chunkCount'];
         for (const key of lsKeys) {
             try {
                 localStorage.removeItem(key);
@@ -959,7 +959,7 @@ async function attemptEmergencyRecovery() {
         // Clear potential chunks (up to 50)
         for (let i = 0; i < 50; i++) {
             try {
-                localStorage.removeItem(`bmTemplates_part_${i}`);
+                localStorage.removeItem(`smTemplates_part_${i}`);
             } catch (_) {}
         }
 
@@ -987,7 +987,7 @@ async function migrateAndValidateStorage() {
         try {
             if (typeof GM !== 'undefined' && GM.getValue) {
                 // Check if data is chunked
-                const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+                const chunkCount = await GM.getValue('smTemplates_chunkCount', 0);
                 if (chunkCount > 0) {
                     debugLog(`Loading ${chunkCount} TM chunks...`);
                     // Load chunked data with validation
@@ -995,7 +995,7 @@ async function migrateAndValidateStorage() {
                     let missingChunks = 0;
 
                     for (let i = 0; i < chunkCount; i++) {
-                        const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
+                        const chunk = await GM.getValue(`smTemplates_part_${i}`, '');
                         if (!chunk) {
                             missingChunks++;
                             console.warn(`⚠️ Missing TM chunk ${i}/${chunkCount}`);
@@ -1013,13 +1013,13 @@ async function migrateAndValidateStorage() {
                         debugLog(`TM chunked data loaded: ${combinedData.length} chars`);
                     }
                 } else {
-                    tmData = await GM.getValue('bmTemplates', null);
+                    tmData = await GM.getValue('smTemplates', null);
                     debugLog(`TM single data loaded: ${tmData ? tmData.length : 0} chars`);
                 }
-                tmTimestamp = await GM.getValue('bmTemplates_timestamp', 0);
+                tmTimestamp = await GM.getValue('smTemplates_timestamp', 0);
             } else if (typeof GM_getValue !== 'undefined') {
                 // Check if data is chunked (legacy)
-                const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
+                const chunkCount = GM_getValue('smTemplates_chunkCount', 0);
                 if (chunkCount > 0) {
                     debugLog(`Loading ${chunkCount} TM legacy chunks...`);
                     // Load chunked data with validation
@@ -1027,7 +1027,7 @@ async function migrateAndValidateStorage() {
                     let missingChunks = 0;
 
                     for (let i = 0; i < chunkCount; i++) {
-                        const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
+                        const chunk = GM_getValue(`smTemplates_part_${i}`, '');
                         if (!chunk) {
                             missingChunks++;
                             console.warn(`⚠️ Missing TM legacy chunk ${i}/${chunkCount}`);
@@ -1045,10 +1045,10 @@ async function migrateAndValidateStorage() {
                         debugLog(`TM legacy chunked data loaded: ${combinedData.length} chars`);
                     }
                 } else {
-                    tmData = GM_getValue('bmTemplates', null);
+                    tmData = GM_getValue('smTemplates', null);
                     debugLog(`TM legacy single data loaded: ${tmData ? tmData.length : 0} chars`);
                 }
-                tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
+                tmTimestamp = GM_getValue('smTemplates_timestamp', 0);
             }
         } catch (e) {
             console.error('❌ TM check failed:', e);
@@ -1057,7 +1057,7 @@ async function migrateAndValidateStorage() {
 
         // Get localStorage data with validation
         try {
-            const lsChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+            const lsChunkCount = parseInt(localStorage.getItem('smTemplates_chunkCount') || '0');
             if (lsChunkCount > 0) {
                 debugLog(`Loading ${lsChunkCount} LS chunks...`);
                 // Load chunked data with validation
@@ -1065,7 +1065,7 @@ async function migrateAndValidateStorage() {
                 let missingChunks = 0;
 
                 for (let i = 0; i < lsChunkCount; i++) {
-                    const chunk = localStorage.getItem(`bmTemplates_part_${i}`) || '';
+                    const chunk = localStorage.getItem(`smTemplates_part_${i}`) || '';
                     if (!chunk) {
                         missingChunks++;
                         console.warn(`⚠️ Missing LS chunk ${i}/${lsChunkCount}`);
@@ -1083,10 +1083,10 @@ async function migrateAndValidateStorage() {
                     debugLog(`LS chunked data loaded: ${combinedData.length} chars`);
                 }
             } else {
-                lsData = localStorage.getItem('bmTemplates');
+                lsData = localStorage.getItem('smTemplates');
                 debugLog(`LS single data loaded: ${lsData ? lsData.length : 0} chars`);
             }
-            lsTimestamp = parseInt(localStorage.getItem('bmTemplates_timestamp') || '0');
+            lsTimestamp = parseInt(localStorage.getItem('smTemplates_timestamp') || '0');
         } catch (e) {
             console.error('❌ LS check failed:', e);
             lsData = null;
@@ -1153,14 +1153,14 @@ async function migrateAndValidateStorage() {
                         // Store as chunks in LS
                         await storeDataChunked('ls', tmData, tmTimestamp);
                     } else {
-                        localStorage.setItem('bmTemplates', tmData);
-                        localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
+                        localStorage.setItem('smTemplates', tmData);
+                        localStorage.setItem('smTemplates_timestamp', tmTimestamp.toString());
                         // Clean up any existing chunks
-                        const oldChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+                        const oldChunkCount = parseInt(localStorage.getItem('smTemplates_chunkCount') || '0');
                         for (let i = 0; i < oldChunkCount; i++) {
-                            localStorage.removeItem(`bmTemplates_part_${i}`);
+                            localStorage.removeItem(`smTemplates_part_${i}`);
                         }
-                        localStorage.removeItem('bmTemplates_chunkCount');
+                        localStorage.removeItem('smTemplates_chunkCount');
                     }
                     debugLog('LS updated from TM');
                 } catch (e) {
@@ -1175,22 +1175,22 @@ async function migrateAndValidateStorage() {
                             // Store as chunks in TM
                             await storeDataChunked('tm', lsData, lsTimestamp);
                         } else {
-                            await GM.setValue('bmTemplates', lsData);
-                            await GM.setValue('bmTemplates_timestamp', lsTimestamp);
+                            await GM.setValue('smTemplates', lsData);
+                            await GM.setValue('smTemplates_timestamp', lsTimestamp);
                             // Clean up any existing chunks
-                            const oldChunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+                            const oldChunkCount = await GM.getValue('smTemplates_chunkCount', 0);
                             for (let i = 0; i < oldChunkCount; i++) {
                                 try {
-                                    await GM.deleteValue(`bmTemplates_part_${i}`);
+                                    await GM.deleteValue(`smTemplates_part_${i}`);
                                 } catch (_) {}
                             }
                             try {
-                                await GM.deleteValue('bmTemplates_chunkCount');
+                                await GM.deleteValue('smTemplates_chunkCount');
                             } catch (_) {}
                         }
                     } else if (typeof GM_setValue !== 'undefined') {
-                        GM_setValue('bmTemplates', lsData);
-                        GM_setValue('bmTemplates_timestamp', lsTimestamp);
+                        GM_setValue('smTemplates', lsData);
+                        GM_setValue('smTemplates_timestamp', lsTimestamp);
                     }
                     debugLog('TM updated from LS');
                 } catch (e) {
@@ -1211,36 +1211,36 @@ async function cleanupCorruptedStorage(storageType) {
         if (storageType === 'tm') {
             if (typeof GM !== 'undefined' && GM.deleteValue) {
                 try {
-                    await GM.deleteValue('bmTemplates');
+                    await GM.deleteValue('smTemplates');
                 } catch (_) {}
                 try {
-                    await GM.deleteValue('bmTemplates_timestamp');
+                    await GM.deleteValue('smTemplates_timestamp');
                 } catch (_) {}
-                const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+                const chunkCount = await GM.getValue('smTemplates_chunkCount', 0);
                 for (let i = 0; i < chunkCount; i++) {
                     try {
-                        await GM.deleteValue(`bmTemplates_part_${i}`);
+                        await GM.deleteValue(`smTemplates_part_${i}`);
                     } catch (_) {}
                 }
                 try {
-                    await GM.deleteValue('bmTemplates_chunkCount');
+                    await GM.deleteValue('smTemplates_chunkCount');
                 } catch (_) {}
             }
         } else if (storageType === 'ls') {
             try {
-                localStorage.removeItem('bmTemplates');
+                localStorage.removeItem('smTemplates');
             } catch (_) {}
             try {
-                localStorage.removeItem('bmTemplates_timestamp');
+                localStorage.removeItem('smTemplates_timestamp');
             } catch (_) {}
-            const chunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+            const chunkCount = parseInt(localStorage.getItem('smTemplates_chunkCount') || '0');
             for (let i = 0; i < chunkCount; i++) {
                 try {
-                    localStorage.removeItem(`bmTemplates_part_${i}`);
+                    localStorage.removeItem(`smTemplates_part_${i}`);
                 } catch (_) {}
             }
             try {
-                localStorage.removeItem('bmTemplates_chunkCount');
+                localStorage.removeItem('smTemplates_chunkCount');
             } catch (_) {}
         }
         debugLog(`Cleaned up corrupted ${storageType.toUpperCase()} storage`);
@@ -1258,26 +1258,26 @@ async function storeDataChunked(storageType, data, timestamp) {
         if (typeof GM !== 'undefined' && GM.setValue) {
             // Clear single key first
             try {
-                await GM.deleteValue('bmTemplates');
+                await GM.deleteValue('smTemplates');
             } catch (_) {}
-            await GM.setValue('bmTemplates_chunkCount', parts);
+            await GM.setValue('smTemplates_chunkCount', parts);
             for (let i = 0; i < parts; i++) {
                 const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-                await GM.setValue(`bmTemplates_part_${i}`, slice);
+                await GM.setValue(`smTemplates_part_${i}`, slice);
             }
-            await GM.setValue('bmTemplates_timestamp', timestamp);
+            await GM.setValue('smTemplates_timestamp', timestamp);
         }
     } else if (storageType === 'ls') {
         // Clear single key first
         try {
-            localStorage.removeItem('bmTemplates');
+            localStorage.removeItem('smTemplates');
         } catch (_) {}
-        localStorage.setItem('bmTemplates_chunkCount', String(parts));
+        localStorage.setItem('smTemplates_chunkCount', String(parts));
         for (let i = 0; i < parts; i++) {
             const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-            localStorage.setItem(`bmTemplates_part_${i}`, slice);
+            localStorage.setItem(`smTemplates_part_${i}`, slice);
         }
-        localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+        localStorage.setItem('smTemplates_timestamp', timestamp.toString());
     }
 }
 
@@ -1566,11 +1566,11 @@ function performDeleteAllTemplates(instance, templateCount, templateText) {
         // Clear from TamperMonkey storage
         try {
             if (typeof GM !== 'undefined' && GM.deleteValue) {
-                GM.deleteValue('bmTemplates');
-                GM.deleteValue('bmTemplates_timestamp');
+                GM.deleteValue('smTemplates');
+                GM.deleteValue('smTemplates_timestamp');
             } else if (typeof GM_deleteValue !== 'undefined') {
-                GM_deleteValue('bmTemplates');
-                GM_deleteValue('bmTemplates_timestamp');
+                GM_deleteValue('smTemplates');
+                GM_deleteValue('smTemplates_timestamp');
             }
         } catch (error) {
             console.warn('⚠️ Failed to clear TamperMonkey storage:', error);
@@ -1578,8 +1578,8 @@ function performDeleteAllTemplates(instance, templateCount, templateText) {
 
         // Clear from localStorage
         try {
-            localStorage.removeItem('bmTemplates');
-            localStorage.removeItem('bmTemplates_timestamp');
+            localStorage.removeItem('smTemplates');
+            localStorage.removeItem('smTemplates_timestamp');
         } catch (error) {
             console.warn('⚠️ Failed to clear localStorage:', error);
         }
@@ -1620,42 +1620,79 @@ function clearAllStorage(instance) {
         `This will delete ALL Blue Marble data including:\n\n• Templates\n• Settings\n• Color filters\n• Crosshair preferences\n• All cached data\n\nThis action cannot be undone!\n\nAre you sure?`,
         () => {
             try {
-                // List of all Blue Marble storage keys
-                const bmStorageKeys = [
+                // List of all storage keys of this script (all start with 'sm', so other scripts' data is never touched)
+                const smStorageKeys = [
                     // Templates
-                    'bmTemplates',
-                    'bmTemplates_timestamp',
+                    'smTemplates',
+                    'smTemplates_timestamp',
 
                     // Settings
-                    'bmErrorMap',
-                    'bmCrosshairColor',
-                    'bmCrosshairBorder',
-                    'bmCrosshairEnhancedSize',
-                    'bmCrosshairRadius',
-                    'bmCrosshairThickness',
-                    'bmMiniTracker',
-                    'bmCollapseMin',
-                    'bmMobileMode',
-                    'bmTileRefreshPaused',
-                    'bmShowLeftOnColor',
-                    'bmShowWrongOnColor',
-                    'bmQuickfillEnabled',
-                    'bmQuickfillPixels',
-                    'bmQuickfillSelectedColor',
+                    'smErrorMap',
+                    'smCrosshairColor',
+                    'smCrosshairBorder',
+                    'smCrosshairEnhancedSize',
+                    'smCrosshairRadius',
+                    'smCrosshairThickness',
+                    'smMiniTracker',
+                    'smCollapseMin',
+                    'smMobileMode',
+                    'smTileRefreshPaused',
+                    'smShowLeftOnColor',
+                    'smShowWrongOnColor',
+                    'smQuickfillEnabled',
+                    'smQuickfillPixels',
+                    'smQuickfillSelectedColor',
 
                     // Color filters
-                    'bmcf-excluded-colors',
-                    'bmcf-excluded-colors-pending',
-                    'bmcf-view-preference',
+                    'smcf-excluded-colors',
+                    'smcf-excluded-colors-pending',
+                    'smcf-view-preference',
 
                     // Enhanced mode
-                    'bmEnhanceWrongColors',
+                    'smEnhanceWrongColors',
+                    'smIncludeWrongColors',
+
+                    // Other settings and caches
+                    'smCollapseMinEnabled',
+                    'smColorMenuHeight',
+                    'smDebugLoggingEnabled',
+                    'smDragMode',
+                    'smMiniTrackerEnabled',
+                    'smNavigationMethod',
+                    'smPerf',
+                    'smQuickPaintEnabled',
+                    'smShowColorMenu',
+                    'smShowDroplets',
+                    'smShowFullCharge',
+                    'smShowInformationHeader',
+                    'smShowNextLevel',
+                    'smShowTemplateHeader',
+                    'smShowUsername',
+                    'smSmartDetectionEnabled',
+                    'smSmartTileCache',
+                    'smSmartTileCacheStats',
+                    'smSmartTileCacheVersion',
+                    'smTemplateColorSort',
+                    'smTopBar',
+                    'smWorkerEncode',
+                    'smWorkers',
+                    'smcf-compact-sort',
+                    'smTemplates_chunkCount',
                 ];
+
+                // Large template data is stored in numbered parts: remove those as well
+                const storedPartCount =
+                    Number(typeof GM_getValue !== 'undefined' ? GM_getValue('smTemplates_chunkCount', 0) : 0) ||
+                    Number(localStorage.getItem('smTemplates_chunkCount')) ||
+                    0;
+                for (let part = 0; part < storedPartCount; part++) {
+                    smStorageKeys.push(`smTemplates_part_${part}`);
+                }
 
                 let deletedCount = 0;
 
                 // Clear localStorage
-                bmStorageKeys.forEach((key) => {
+                smStorageKeys.forEach((key) => {
                     if (localStorage.getItem(key) !== null) {
                         localStorage.removeItem(key);
                         deletedCount++;
@@ -1664,7 +1701,7 @@ function clearAllStorage(instance) {
 
                 // Clear TamperMonkey storage (if available)
                 if (typeof GM_deleteValue !== 'undefined') {
-                    bmStorageKeys.forEach((key) => {
+                    smStorageKeys.forEach((key) => {
                         try {
                             GM_deleteValue(key);
                         } catch (e) {
@@ -1675,7 +1712,7 @@ function clearAllStorage(instance) {
 
                 // Clear async GM storage (if available)
                 if (typeof GM !== 'undefined' && GM.deleteValue) {
-                    bmStorageKeys.forEach(async (key) => {
+                    smStorageKeys.forEach(async (key) => {
                         try {
                             await GM.deleteValue(key);
                         } catch (e) {
@@ -4485,7 +4522,7 @@ function buildOverlayMain() {
             id: 'bm-separator',
             style: (() => {
                 try {
-                    const show = JSON.parse(localStorage.getItem('bmShowInformationHeader') ?? 'true');
+                    const show = JSON.parse(localStorage.getItem('smShowInformationHeader') ?? 'true');
                     return show ? '' : 'display: none;';
                 } catch (e) {
                     return '';
@@ -4535,7 +4572,7 @@ function buildOverlayMain() {
             id: 'bm-separator',
             style: (() => {
                 try {
-                    const show = JSON.parse(localStorage.getItem('bmShowTemplateHeader') ?? 'true');
+                    const show = JSON.parse(localStorage.getItem('smShowTemplateHeader') ?? 'true');
                     return show ? '' : 'display: none;';
                 } catch (e) {
                     return '';
@@ -4644,7 +4681,7 @@ function buildOverlayMain() {
           padding: 12px;
           border: 1px solid rgba(255, 255, 255, 0.1);
           margin-top: 8px;
-          display: ${JSON.parse(localStorage.getItem('bmShowColorMenu') ?? 'false') ? 'block' : 'none'};
+          display: ${JSON.parse(localStorage.getItem('smShowColorMenu') ?? 'false') ? 'block' : 'none'};
         `,
         })
         .addDiv({
@@ -5133,7 +5170,7 @@ function buildColorFilterOverlay() {
             let totalWrong = 0;
 
             // Get excluded colors from localStorage (used for both wrong pixels and main calculation)
-            const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+            const excludedColors = JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]');
 
             // Get wrong pixels from tile progress data (only once) - FILTERED BY ENABLED TEMPLATES
             if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
@@ -5325,9 +5362,9 @@ function buildColorFilterOverlay() {
             }
 
             // Initialize pending excluded colors (copy from applied if not exists)
-            if (!localStorage.getItem('bmcf-excluded-colors-pending')) {
-                const appliedExcluded = localStorage.getItem('bmcf-excluded-colors') || '[]';
-                localStorage.setItem('bmcf-excluded-colors-pending', appliedExcluded);
+            if (!localStorage.getItem('smcf-excluded-colors-pending')) {
+                const appliedExcluded = localStorage.getItem('smcf-excluded-colors') || '[]';
+                localStorage.setItem('smcf-excluded-colors-pending', appliedExcluded);
             }
 
             // Create the color filter overlay
@@ -5440,7 +5477,7 @@ function buildColorFilterOverlay() {
 
             closeButton.onclick = () => {
                 // Discard pending changes when closing without applying
-                localStorage.removeItem('bmcf-excluded-colors-pending');
+                localStorage.removeItem('smcf-excluded-colors-pending');
                 colorFilterOverlay.remove();
             };
 
@@ -5511,7 +5548,7 @@ function buildColorFilterOverlay() {
     `;
 
             // State variable for current view mode - restore from localStorage
-            const savedPreference = localStorage.getItem('bmcf-view-preference');
+            const savedPreference = localStorage.getItem('smcf-view-preference');
             let isListView = savedPreference === 'list';
 
             // Add hover effects but prevent them on touch devices
@@ -5542,7 +5579,7 @@ function buildColorFilterOverlay() {
                 isListView = !isListView;
 
                 // Save preference to localStorage
-                localStorage.setItem('bmcf-view-preference', isListView ? 'list' : 'grid');
+                localStorage.setItem('smcf-view-preference', isListView ? 'list' : 'grid');
 
                 // Use CSS classes to control visibility - this prevents DOM manipulation conflicts
                 if (isListView) {
@@ -6364,8 +6401,8 @@ function buildColorFilterOverlay() {
       `;
 
                 // Check if color is excluded from progress (check both applied and pending)
-                const appliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
-                const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(appliedExcluded));
+                const appliedExcluded = JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]');
+                const pendingExcluded = JSON.parse(localStorage.getItem('smcf-excluded-colors-pending') || JSON.stringify(appliedExcluded));
                 const isExcluded = pendingExcluded.includes(colorKey);
 
                 if (isExcluded) {
@@ -6387,14 +6424,14 @@ function buildColorFilterOverlay() {
                 excludeIcon.onclick = (e) => {
                     e.stopPropagation();
                     const pendingExcluded = JSON.parse(
-                        localStorage.getItem('bmcf-excluded-colors-pending') ||
-                            JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')),
+                        localStorage.getItem('smcf-excluded-colors-pending') ||
+                            JSON.stringify(JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]')),
                     );
 
                     if (pendingExcluded.includes(colorKey)) {
                         // Remove from pending excluded list
                         const newPendingExcluded = pendingExcluded.filter((c) => c !== colorKey);
-                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
+                        localStorage.setItem('smcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
                         excludeIcon.textContent = '👁️';
                         excludeIcon.style.background = 'rgba(0,0,0,0.3)';
                         excludeIcon.style.opacity = '0.7';
@@ -6405,7 +6442,7 @@ function buildColorFilterOverlay() {
                     } else {
                         // Add to pending excluded list
                         pendingExcluded.push(colorKey);
-                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
+                        localStorage.setItem('smcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
                         excludeIcon.textContent = '🚫';
                         excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
                         excludeIcon.style.opacity = '1';
@@ -6932,8 +6969,8 @@ function buildColorFilterOverlay() {
       `;
 
                 // Check if color is excluded (check pending changes)
-                const listAppliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
-                const listPendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(listAppliedExcluded));
+                const listAppliedExcluded = JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]');
+                const listPendingExcluded = JSON.parse(localStorage.getItem('smcf-excluded-colors-pending') || JSON.stringify(listAppliedExcluded));
                 const listIsExcluded = listPendingExcluded.includes(colorKey);
 
                 if (listIsExcluded) {
@@ -6955,14 +6992,14 @@ function buildColorFilterOverlay() {
                 listExcludeIcon.onclick = (e) => {
                     e.stopPropagation();
                     const pendingExcluded = JSON.parse(
-                        localStorage.getItem('bmcf-excluded-colors-pending') ||
-                            JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')),
+                        localStorage.getItem('smcf-excluded-colors-pending') ||
+                            JSON.stringify(JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]')),
                     );
 
                     if (pendingExcluded.includes(colorKey)) {
                         // Remove from pending excluded list
                         const newPendingExcluded = pendingExcluded.filter((c) => c !== colorKey);
-                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
+                        localStorage.setItem('smcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
                         listExcludeIcon.textContent = '👁️';
                         listExcludeIcon.style.background = 'rgba(0,0,0,0.3)';
                         listExcludeIcon.style.opacity = '0.7';
@@ -6973,7 +7010,7 @@ function buildColorFilterOverlay() {
                     } else {
                         // Add to pending excluded list
                         pendingExcluded.push(colorKey);
-                        localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
+                        localStorage.setItem('smcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
                         listExcludeIcon.textContent = '🚫';
                         listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
                         listExcludeIcon.style.opacity = '1';
@@ -7326,10 +7363,10 @@ function buildColorFilterOverlay() {
             refreshStatsButton.onclick = () => {
                 debugLog('[Color Filter] Refreshing statistics...');
                 // Apply pending excluded colors changes
-                const pendingExcluded = localStorage.getItem('bmcf-excluded-colors-pending');
+                const pendingExcluded = localStorage.getItem('smcf-excluded-colors-pending');
                 if (pendingExcluded) {
-                    localStorage.setItem('bmcf-excluded-colors', pendingExcluded);
-                    localStorage.removeItem('bmcf-excluded-colors-pending');
+                    localStorage.setItem('smcf-excluded-colors', pendingExcluded);
+                    localStorage.removeItem('smcf-excluded-colors-pending');
                 }
                 // Update mini tracker to reflect excluded colors
                 updateMiniTracker();
@@ -7337,10 +7374,10 @@ function buildColorFilterOverlay() {
             };
             applyButton.onclick = async () => {
                 // Apply pending excluded colors changes before closing
-                const pendingExcluded = localStorage.getItem('bmcf-excluded-colors-pending');
+                const pendingExcluded = localStorage.getItem('smcf-excluded-colors-pending');
                 if (pendingExcluded) {
-                    localStorage.setItem('bmcf-excluded-colors', pendingExcluded);
-                    localStorage.removeItem('bmcf-excluded-colors-pending');
+                    localStorage.setItem('smcf-excluded-colors', pendingExcluded);
+                    localStorage.removeItem('smcf-excluded-colors-pending');
                 }
 
                 colorFilterOverlay.remove();
@@ -9020,11 +9057,11 @@ function getErrorMapEnabled() {
     try {
         let enabled = null;
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmErrorMap', null);
+            const saved = GM_getValue('smErrorMap', null);
             if (saved !== null) enabled = JSON.parse(saved);
         }
         if (enabled === null) {
-            const saved = localStorage.getItem('bmErrorMap');
+            const saved = localStorage.getItem('smErrorMap');
             if (saved !== null) enabled = JSON.parse(saved);
         }
         return enabled !== null ? enabled : false;
@@ -9039,9 +9076,9 @@ function saveErrorMapEnabled(enabled) {
     try {
         const enabledString = JSON.stringify(!!enabled);
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmErrorMap', enabledString);
+            GM_setValue('smErrorMap', enabledString);
         }
-        localStorage.setItem('bmErrorMap', enabledString);
+        localStorage.setItem('smErrorMap', enabledString);
         debugLog('Error map setting saved:', enabled);
         // Invalidate cache since visual mode changed
         import('./tileManager.js').then((tileManager) => {
@@ -9172,13 +9209,13 @@ function getCrosshairColor() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairColor', null);
+            const saved = GM_getValue('smCrosshairColor', null);
             if (saved) savedColor = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (!savedColor) {
-            const saved = localStorage.getItem('bmCrosshairColor');
+            const saved = localStorage.getItem('smCrosshairColor');
             if (saved) savedColor = JSON.parse(saved);
         }
 
@@ -9212,11 +9249,11 @@ function saveCrosshairColor(colorConfig) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairColor', colorString);
+            GM_setValue('smCrosshairColor', colorString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairColor', colorString);
+        localStorage.setItem('smCrosshairColor', colorString);
 
         debugLog('Crosshair color saved:', colorConfig);
         // Invalidate cache for setting change
@@ -9238,13 +9275,13 @@ function getBorderEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairBorder', null);
+            const saved = GM_getValue('smCrosshairBorder', null);
             if (saved !== null) borderEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (borderEnabled === null) {
-            const saved = localStorage.getItem('bmCrosshairBorder');
+            const saved = localStorage.getItem('smCrosshairBorder');
             if (saved !== null) borderEnabled = JSON.parse(saved);
         }
 
@@ -9273,11 +9310,11 @@ function saveBorderEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairBorder', enabledString);
+            GM_setValue('smCrosshairBorder', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairBorder', enabledString);
+        localStorage.setItem('smCrosshairBorder', enabledString);
         debugLog('🔲 Saved to localStorage');
 
         debugLog('Border setting saved successfully:', enabled);
@@ -9296,7 +9333,7 @@ function getEnhancedSizeEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+            const saved = GM_getValue('smCrosshairEnhancedSize', null);
             if (saved !== null) {
                 enhancedSizeEnabled = JSON.parse(saved);
             }
@@ -9304,7 +9341,7 @@ function getEnhancedSizeEnabled() {
 
         // Fallback to localStorage
         if (enhancedSizeEnabled === null) {
-            const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+            const saved = localStorage.getItem('smCrosshairEnhancedSize');
             if (saved !== null) {
                 enhancedSizeEnabled = JSON.parse(saved);
             }
@@ -9331,11 +9368,11 @@ function saveEnhancedSizeEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairEnhancedSize', enabledString);
+            GM_setValue('smCrosshairEnhancedSize', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairEnhancedSize', enabledString);
+        localStorage.setItem('smCrosshairEnhancedSize', enabledString);
 
         debugLog('Enhanced size setting saved successfully:', enabled);
     } catch (error) {
@@ -9353,7 +9390,7 @@ function getCrosshairRadius() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairRadius', null);
+            const saved = GM_getValue('smCrosshairRadius', null);
             if (saved !== null) {
                 radiusValue = JSON.parse(saved);
             }
@@ -9361,7 +9398,7 @@ function getCrosshairRadius() {
 
         // Fallback to localStorage
         if (radiusValue === null) {
-            const saved = localStorage.getItem('bmCrosshairRadius');
+            const saved = localStorage.getItem('smCrosshairRadius');
             if (saved !== null) {
                 radiusValue = JSON.parse(saved);
             }
@@ -9390,11 +9427,11 @@ function saveCrosshairRadius(radius) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairRadius', radiusString);
+            GM_setValue('smCrosshairRadius', radiusString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairRadius', radiusString);
+        localStorage.setItem('smCrosshairRadius', radiusString);
 
         debugLog('Crosshair radius setting saved successfully:', clampedRadius);
     } catch (error) {
@@ -9412,13 +9449,13 @@ function getMiniTrackerEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmMiniTracker', null);
+            const saved = GM_getValue('smMiniTracker', null);
             if (saved !== null) trackerEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (trackerEnabled === null) {
-            const saved = localStorage.getItem('bmMiniTracker');
+            const saved = localStorage.getItem('smMiniTracker');
             if (saved !== null) trackerEnabled = JSON.parse(saved);
         }
 
@@ -9446,11 +9483,11 @@ function saveMiniTrackerEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmMiniTracker', enabledString);
+            GM_setValue('smMiniTracker', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmMiniTracker', enabledString);
+        localStorage.setItem('smMiniTracker', enabledString);
         debugLog('Saved to localStorage');
 
         debugLog('Mini tracker setting saved successfully:', enabled);
@@ -9468,12 +9505,12 @@ function getTopBarEnabled() {
         let topBarEnabled = null;
 
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmTopBar', null);
+            const saved = GM_getValue('smTopBar', null);
             if (saved !== null) topBarEnabled = JSON.parse(saved);
         }
 
         if (topBarEnabled === null) {
-            const saved = localStorage.getItem('bmTopBar');
+            const saved = localStorage.getItem('smTopBar');
             if (saved !== null) topBarEnabled = JSON.parse(saved);
         }
 
@@ -9496,10 +9533,10 @@ function saveTopBarEnabled(enabled) {
         const enabledString = JSON.stringify(enabled);
 
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmTopBar', enabledString);
+            GM_setValue('smTopBar', enabledString);
         }
 
-        localStorage.setItem('bmTopBar', enabledString);
+        localStorage.setItem('smTopBar', enabledString);
 
         debugLog('Top bar setting saved successfully:', enabled);
     } catch (error) {
@@ -9517,13 +9554,13 @@ function getCollapseMinEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCollapseMin', null);
+            const saved = GM_getValue('smCollapseMin', null);
             if (saved !== null) collapseEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (collapseEnabled === null) {
-            const saved = localStorage.getItem('bmCollapseMin');
+            const saved = localStorage.getItem('smCollapseMin');
             if (saved !== null) collapseEnabled = JSON.parse(saved);
         }
 
@@ -9551,11 +9588,11 @@ function saveCollapseMinEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCollapseMin', enabledString);
+            GM_setValue('smCollapseMin', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCollapseMin', enabledString);
+        localStorage.setItem('smCollapseMin', enabledString);
         debugLog('Saved to localStorage');
 
         debugLog('Collapse mini template setting saved successfully:', enabled);
@@ -9571,7 +9608,7 @@ function saveCollapseMinEnabled(enabled) {
 function getMobileMode() {
     try {
         debugLog('Loading mobile mode setting...');
-        const storedValue = localStorage.getItem('bmMobileMode') || 'false';
+        const storedValue = localStorage.getItem('smMobileMode') || 'false';
         const mobileMode = JSON.parse(storedValue);
         debugLog('Mobile mode setting loaded:', mobileMode);
         return mobileMode;
@@ -9588,11 +9625,11 @@ function getShowLeftOnColorEnabled() {
     try {
         let enabled = null;
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmShowLeftOnColor', null);
+            const saved = GM_getValue('smShowLeftOnColor', null);
             if (saved !== null) enabled = JSON.parse(saved);
         }
         if (enabled === null) {
-            const saved = localStorage.getItem('bmShowLeftOnColor');
+            const saved = localStorage.getItem('smShowLeftOnColor');
             if (saved !== null) enabled = JSON.parse(saved);
         }
         if (enabled !== null) {
@@ -9612,9 +9649,9 @@ function saveShowLeftOnColorEnabled(enabled) {
     try {
         const enabledString = JSON.stringify(!!enabled);
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmShowLeftOnColor', enabledString);
+            GM_setValue('smShowLeftOnColor', enabledString);
         }
-        localStorage.setItem('bmShowLeftOnColor', enabledString);
+        localStorage.setItem('smShowLeftOnColor', enabledString);
         debugLog('Show Left-on-Color setting saved:', enabled);
 
         // Restart the left badges auto-update system with the new setting
@@ -9632,7 +9669,7 @@ function saveMobileMode(enabled) {
     try {
         const enabledString = JSON.stringify(enabled);
         debugLog('Saving mobile mode setting:', enabled);
-        localStorage.setItem('bmMobileMode', enabledString);
+        localStorage.setItem('smMobileMode', enabledString);
         debugLog('Mobile mode setting saved successfully:', enabled);
     } catch (error) {
         console.error('❌ Failed to save mobile mode setting:', error);
@@ -9818,7 +9855,7 @@ function updateMiniTracker() {
             const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
 
             // Get excluded colors from localStorage (same as main progress bar)
-            const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+            const excludedColors = JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]');
 
             for (const [colorKey, stats] of Object.entries(pixelStats)) {
                 // Skip excluded colors from mini tracker calculation too
@@ -10017,7 +10054,7 @@ function createTopProgressBar() {
     let totalPainted = 0;
 
     const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true);
-    const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+    const excludedColors = JSON.parse(localStorage.getItem('smcf-excluded-colors') || '[]');
 
     for (const [colorKey, stats] of Object.entries(pixelStats)) {
         if (excludedColors.includes(colorKey)) {
@@ -10298,9 +10335,9 @@ function applyHeaderVisibility(key, visible) {
             if (separatorText) {
                 const text = separatorText.textContent.trim();
 
-                if (key === 'bmShowInformationHeader' && text === 'Information') {
+                if (key === 'smShowInformationHeader' && text === 'Information') {
                     separator.style.display = visible ? '' : 'none';
-                } else if (key === 'bmShowTemplateHeader' && text === 'Template') {
+                } else if (key === 'smShowTemplateHeader' && text === 'Template') {
                     separator.style.display = visible ? '' : 'none';
                 }
             }
@@ -10316,13 +10353,13 @@ function applyHeaderVisibility(key, visible) {
 function applyStoredOverlaySettings() {
     try {
         // Read settings from localStorage
-        const showInfoHeader = JSON.parse(localStorage.getItem('bmShowInformationHeader') ?? 'true');
-        const showTemplateHeader = JSON.parse(localStorage.getItem('bmShowTemplateHeader') ?? 'true');
-        const showColorMenu = JSON.parse(localStorage.getItem('bmShowColorMenu') ?? 'false'); // Default: disabled (Beta)
+        const showInfoHeader = JSON.parse(localStorage.getItem('smShowInformationHeader') ?? 'true');
+        const showTemplateHeader = JSON.parse(localStorage.getItem('smShowTemplateHeader') ?? 'true');
+        const showColorMenu = JSON.parse(localStorage.getItem('smShowColorMenu') ?? 'false'); // Default: disabled (Beta)
 
         // Apply header visibility (fallback - usually handled during creation)
-        applyHeaderVisibility('bmShowInformationHeader', showInfoHeader);
-        applyHeaderVisibility('bmShowTemplateHeader', showTemplateHeader);
+        applyHeaderVisibility('smShowInformationHeader', showInfoHeader);
+        applyHeaderVisibility('smShowTemplateHeader', showTemplateHeader);
 
         // Apply color menu visibility
         const colorMenu = document.getElementById('bm-color-menu');
@@ -10742,7 +10779,7 @@ function initColorMenuResize() {
     let startHeight = 0;
 
     // Load saved height from localStorage
-    const savedHeight = localStorage.getItem('bmColorMenuHeight');
+    const savedHeight = localStorage.getItem('smColorMenuHeight');
     if (savedHeight) {
         colorList.style.maxHeight = savedHeight + 'px';
     }
@@ -10785,7 +10822,7 @@ function initColorMenuResize() {
 
         // Save height to localStorage
         const currentHeight = colorList.offsetHeight;
-        localStorage.setItem('bmColorMenuHeight', currentHeight);
+        localStorage.setItem('smColorMenuHeight', currentHeight);
     };
 
     // Touch events for mobile
@@ -10823,7 +10860,7 @@ function initColorMenuResize() {
 
         // Save height to localStorage
         const currentHeight = colorList.offsetHeight;
-        localStorage.setItem('bmColorMenuHeight', currentHeight);
+        localStorage.setItem('smColorMenuHeight', currentHeight);
     };
 
     // Hover effect
@@ -12877,13 +12914,13 @@ function buildCrosshairSettingsOverlay() {
         };
 
         // Add all checkboxes
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowInformationHeader', 'Information Header'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowTemplateHeader', 'Template Header'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowUsername', 'Username', 'bm-user-name'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowDroplets', 'Droplets', 'bm-user-droplets'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowNextLevel', 'Next Level', 'bm-user-nextlevel'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowFullCharge', 'Full Charge', 'bm-user-fullcharge'));
-        checkboxContainer.appendChild(createVisibilityCheckbox('bmShowColorMenu', 'Color Menu (Beta Test)', 'bm-color-menu'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowInformationHeader', 'Information Header'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowTemplateHeader', 'Template Header'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowUsername', 'Username', 'bm-user-name'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowDroplets', 'Droplets', 'bm-user-droplets'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowNextLevel', 'Next Level', 'bm-user-nextlevel'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowFullCharge', 'Full Charge', 'bm-user-fullcharge'));
+        checkboxContainer.appendChild(createVisibilityCheckbox('smShowColorMenu', 'Color Menu (Beta Test)', 'bm-color-menu'));
 
         overlayVisibilitySection.appendChild(overlayVisibilityTitle);
         overlayVisibilitySection.appendChild(checkboxContainer);

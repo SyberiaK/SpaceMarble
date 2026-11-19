@@ -59,13 +59,13 @@ function getDebugLoggingEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmDebugLoggingEnabled', null);
+            const saved = GM_getValue('smDebugLoggingEnabled', null);
             if (saved !== null) debugEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (debugEnabled === null) {
-            const saved = localStorage.getItem('bmDebugLoggingEnabled');
+            const saved = localStorage.getItem('smDebugLoggingEnabled');
             if (saved !== null) debugEnabled = JSON.parse(saved);
         }
 
@@ -87,11 +87,11 @@ export function saveDebugLoggingEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmDebugLoggingEnabled', enabledString);
+            GM_setValue('smDebugLoggingEnabled', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmDebugLoggingEnabled', enabledString);
+        localStorage.setItem('smDebugLoggingEnabled', enabledString);
     } catch (error) {
         console.error('saving debug settings failed: ', error);
     }

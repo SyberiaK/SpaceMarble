@@ -505,13 +505,13 @@ export default class Template {
 
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairColor', null);
+                const saved = GM_getValue('smCrosshairColor', null);
                 if (saved) savedColor = JSON.parse(saved);
             }
 
             // Fallback to localStorage
             if (!savedColor) {
-                const saved = localStorage.getItem('bmCrosshairColor');
+                const saved = localStorage.getItem('smCrosshairColor');
                 if (saved) savedColor = JSON.parse(saved);
             }
 
@@ -541,7 +541,7 @@ export default class Template {
 
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairBorder', null);
+                const saved = GM_getValue('smCrosshairBorder', null);
                 debugLog('TamperMonkey raw value:', saved);
                 if (saved !== null) {
                     borderEnabled = JSON.parse(saved);
@@ -551,7 +551,7 @@ export default class Template {
 
             // Fallback to localStorage
             if (borderEnabled === null) {
-                const saved = localStorage.getItem('bmCrosshairBorder');
+                const saved = localStorage.getItem('smCrosshairBorder');
                 debugLog('localStorage raw value:', saved);
                 if (saved !== null) {
                     borderEnabled = JSON.parse(saved);

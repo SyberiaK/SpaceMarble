@@ -5,10 +5,10 @@ import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelO
 import { scanTemplateColorsAsync, countChunkPixelsAsync, encodeCanvasAsync, workersActive, encodeActive } from './tileWorkers.js';
 import { EmptyStatusGate } from './emptyStatusGate.js';
 
-// Temporary profiling: run localStorage.setItem('bmPerf','1') in the console and reload to enable
+// Profiling: run localStorage.setItem('smPerf','1') in the console and reload to enable
 const PERF = (() => {
     try {
-        return localStorage.getItem('bmPerf') === '1';
+        return localStorage.getItem('smPerf') === '1';
     } catch (_) {
         return false;
     }
@@ -276,30 +276,30 @@ export default class TemplateManager {
                     const parts = Math.ceil(data.length / CHUNK_SIZE);
                     // Clear single key
                     try {
-                        await GM.deleteValue?.('bmTemplates');
+                        await GM.deleteValue?.('smTemplates');
                     } catch (_) {}
-                    await GM.setValue('bmTemplates_chunkCount', parts);
+                    await GM.setValue('smTemplates_chunkCount', parts);
                     for (let i = 0; i < parts; i++) {
                         const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-                        await GM.setValue(`bmTemplates_part_${i}`, slice);
+                        await GM.setValue(`smTemplates_part_${i}`, slice);
                     }
-                    await GM.setValue('bmTemplates_timestamp', timestamp);
+                    await GM.setValue('smTemplates_timestamp', timestamp);
                     debugLog(`Templates stored in TamperMonkey (chunked x${parts})`);
                 } else {
-                    await GM.setValue('bmTemplates', data);
-                    await GM.setValue('bmTemplates_timestamp', timestamp);
+                    await GM.setValue('smTemplates', data);
+                    await GM.setValue('smTemplates_timestamp', timestamp);
                     // Clear any previous chunked keys
                     try {
-                        const count = await GM.getValue('bmTemplates_chunkCount', 0);
-                        for (let i = 0; i < count; i++) await GM.deleteValue(`bmTemplates_part_${i}`);
-                        await GM.deleteValue('bmTemplates_chunkCount');
+                        const count = await GM.getValue('smTemplates_chunkCount', 0);
+                        for (let i = 0; i < count; i++) await GM.deleteValue(`smTemplates_part_${i}`);
+                        await GM.deleteValue('smTemplates_chunkCount');
                     } catch (_) {}
                 }
                 return;
             } else if (typeof GM_setValue !== 'undefined') {
                 // Legacy GM_* APIs (synchronous) - use no-chunk or minimal chunk via localStorage fallback below
-                GM_setValue('bmTemplates', data);
-                GM_setValue('bmTemplates_timestamp', timestamp);
+                GM_setValue('smTemplates', data);
+                GM_setValue('smTemplates_timestamp', timestamp);
                 return;
             }
         } catch (error) {
@@ -313,22 +313,22 @@ export default class TemplateManager {
                 const parts = Math.ceil(data.length / CHUNK_SIZE);
                 // Clear single key
                 try {
-                    localStorage.removeItem('bmTemplates');
+                    localStorage.removeItem('smTemplates');
                 } catch (_) {}
-                localStorage.setItem('bmTemplates_chunkCount', String(parts));
+                localStorage.setItem('smTemplates_chunkCount', String(parts));
                 for (let i = 0; i < parts; i++) {
                     const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-                    localStorage.setItem(`bmTemplates_part_${i}`, slice);
+                    localStorage.setItem(`smTemplates_part_${i}`, slice);
                 }
-                localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+                localStorage.setItem('smTemplates_timestamp', timestamp.toString());
                 debugLog(`Templates stored in localStorage (chunked x${parts})`);
             } else {
-                localStorage.setItem('bmTemplates', data);
-                localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+                localStorage.setItem('smTemplates', data);
+                localStorage.setItem('smTemplates_timestamp', timestamp.toString());
                 // Clear previous chunked keys
-                const count = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
-                for (let i = 0; i < count; i++) localStorage.removeItem(`bmTemplates_part_${i}`);
-                localStorage.removeItem('bmTemplates_chunkCount');
+                const count = parseInt(localStorage.getItem('smTemplates_chunkCount') || '0');
+                for (let i = 0; i < count; i++) localStorage.removeItem(`smTemplates_part_${i}`);
+                localStorage.removeItem('smTemplates_chunkCount');
             }
         } catch (error) {
             console.error('❌ All storage methods failed:', error);
@@ -1912,13 +1912,13 @@ export default class TemplateManager {
 
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairColor', null);
+                const saved = GM_getValue('smCrosshairColor', null);
                 if (saved) savedColor = JSON.parse(saved);
             }
 
             // Fallback to localStorage
             if (!savedColor) {
-                const saved = localStorage.getItem('bmCrosshairColor');
+                const saved = localStorage.getItem('smCrosshairColor');
                 if (saved) savedColor = JSON.parse(saved);
             }
 
@@ -1945,7 +1945,7 @@ export default class TemplateManager {
 
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairRadius', null);
+                const saved = GM_getValue('smCrosshairRadius', null);
                 if (saved !== null) {
                     radiusValue = JSON.parse(saved);
                 }
@@ -1953,7 +1953,7 @@ export default class TemplateManager {
 
             // Fallback to localStorage
             if (radiusValue === null) {
-                const saved = localStorage.getItem('bmCrosshairRadius');
+                const saved = localStorage.getItem('smCrosshairRadius');
                 if (saved !== null) {
                     radiusValue = JSON.parse(saved);
                 }
@@ -1980,13 +1980,13 @@ export default class TemplateManager {
 
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairBorder', null);
+                const saved = GM_getValue('smCrosshairBorder', null);
                 if (saved !== null) borderEnabled = JSON.parse(saved);
             }
 
             // Fallback to localStorage
             if (borderEnabled === null) {
-                const saved = localStorage.getItem('bmCrosshairBorder');
+                const saved = localStorage.getItem('smCrosshairBorder');
                 if (saved !== null) borderEnabled = JSON.parse(saved);
             }
 
@@ -2011,11 +2011,11 @@ export default class TemplateManager {
         try {
             let enhancedSizeEnabled = null;
             if (typeof GM_getValue !== 'undefined') {
-                const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+                const saved = GM_getValue('smCrosshairEnhancedSize', null);
                 if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
             }
             if (enhancedSizeEnabled === null) {
-                const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+                const saved = localStorage.getItem('smCrosshairEnhancedSize');
                 if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
             }
             if (enhancedSizeEnabled !== null) return enhancedSizeEnabled;
@@ -2101,8 +2101,8 @@ export default class TemplateManager {
         try {
             // Try TamperMonkey storage first
             if (typeof GM_getValue !== 'undefined') {
-                const includeWrongRaw = GM_getValue('bmIncludeWrongColors', null);
-                const enhanceWrongRaw = GM_getValue('bmEnhanceWrongColors', null);
+                const includeWrongRaw = GM_getValue('smIncludeWrongColors', null);
+                const enhanceWrongRaw = GM_getValue('smEnhanceWrongColors', null);
 
                 // Check if TamperMonkey has valid values (not null and not 'null' string)
                 const hasValidInclude = includeWrongRaw !== null && includeWrongRaw !== 'null';
@@ -2122,8 +2122,8 @@ export default class TemplateManager {
             }
 
             // Fallback to localStorage
-            const includeWrongRaw = localStorage.getItem('bmIncludeWrongColors');
-            const enhanceWrongRaw = localStorage.getItem('bmEnhanceWrongColors');
+            const includeWrongRaw = localStorage.getItem('smIncludeWrongColors');
+            const enhanceWrongRaw = localStorage.getItem('smEnhanceWrongColors');
 
             if (includeWrongRaw !== null) {
                 this.includeWrongColorsInProgress = JSON.parse(includeWrongRaw);
@@ -2146,14 +2146,14 @@ export default class TemplateManager {
         try {
             // Try TamperMonkey storage first
             if (typeof GM_setValue !== 'undefined') {
-                GM_setValue('bmIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
-                GM_setValue('bmEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
+                GM_setValue('smIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
+                GM_setValue('smEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
                 return;
             }
 
             // Fallback to localStorage
-            localStorage.setItem('bmIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
-            localStorage.setItem('bmEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
+            localStorage.setItem('smIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
+            localStorage.setItem('smEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
         } catch (error) {
             console.error('❌ [Wrong Colors] Failed to save settings:', error);
         }

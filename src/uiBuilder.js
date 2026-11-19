@@ -315,14 +315,14 @@ export async function buildOverlayMain({
                         button.onmouseover = () => (button.style.transform = 'translateY(-1px)');
                         button.onmouseout = () => (button.style.transform = 'translateY(0)');
                         button.onclick = () => {
-                            const currentlyEnabled = localStorage.getItem('bm-quick-paint-enabled') === 'true';
+                            const currentlyEnabled = localStorage.getItem('smQuickPaintEnabled') === 'true';
                             if (currentlyEnabled) {
-                                localStorage.setItem('bm-quick-paint-enabled', 'false');
+                                localStorage.setItem('smQuickPaintEnabled', 'false');
                                 button.innerHTML = icons.quickFillIcon + ' Quick Paint';
                                 button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
                                 instance.handleDisplayStatus('Quick Paint disabled.');
                             } else {
-                                localStorage.setItem('bm-quick-paint-enabled', 'true');
+                                localStorage.setItem('smQuickPaintEnabled', 'true');
                                 button.innerHTML = icons.quickFillIcon + ' Quick Paint ON';
                                 button.style.background = 'linear-gradient(135deg, #ffc107, #ff8c00)';
                                 instance.handleDisplayStatus('Quick Paint enabled! Place a pixel to automatically paint more with selected color.');

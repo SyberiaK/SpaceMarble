@@ -31,13 +31,13 @@ export function getCrosshairColor() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairColor', null);
+            const saved = GM_getValue('smCrosshairColor', null);
             if (saved) savedColor = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (!savedColor) {
-            const saved = localStorage.getItem('bmCrosshairColor');
+            const saved = localStorage.getItem('smCrosshairColor');
             if (saved) savedColor = JSON.parse(saved);
         }
 
@@ -71,11 +71,11 @@ export function saveCrosshairColor(colorConfig) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairColor', colorString);
+            GM_setValue('smCrosshairColor', colorString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairColor', colorString);
+        localStorage.setItem('smCrosshairColor', colorString);
 
         debugLog('Crosshair color saved:', colorConfig);
         invalidateCache();
@@ -94,13 +94,13 @@ export function getBorderEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairBorder', null);
+            const saved = GM_getValue('smCrosshairBorder', null);
             if (saved !== null) borderEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (borderEnabled === null) {
-            const saved = localStorage.getItem('bmCrosshairBorder');
+            const saved = localStorage.getItem('smCrosshairBorder');
             if (saved !== null) borderEnabled = JSON.parse(saved);
         }
 
@@ -125,11 +125,11 @@ export function saveBorderEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairBorder', enabledString);
+            GM_setValue('smCrosshairBorder', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairBorder', enabledString);
+        localStorage.setItem('smCrosshairBorder', enabledString);
 
         invalidateCache();
     } catch (error) {
@@ -147,13 +147,13 @@ export function getEnhancedSizeEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+            const saved = GM_getValue('smCrosshairEnhancedSize', null);
             if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (enhancedSizeEnabled === null) {
-            const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+            const saved = localStorage.getItem('smCrosshairEnhancedSize');
             if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
         }
 
@@ -178,11 +178,11 @@ export function saveEnhancedSizeEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCrosshairEnhancedSize', enabledString);
+            GM_setValue('smCrosshairEnhancedSize', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCrosshairEnhancedSize', enabledString);
+        localStorage.setItem('smCrosshairEnhancedSize', enabledString);
 
         invalidateCache();
     } catch (error) {
@@ -200,13 +200,13 @@ export function getMiniTrackerEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmMiniTrackerEnabled', null);
+            const saved = GM_getValue('smMiniTrackerEnabled', null);
             if (saved !== null) miniTrackerEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (miniTrackerEnabled === null) {
-            const saved = localStorage.getItem('bmMiniTrackerEnabled');
+            const saved = localStorage.getItem('smMiniTrackerEnabled');
             if (saved !== null) miniTrackerEnabled = JSON.parse(saved);
         }
 
@@ -231,11 +231,11 @@ export function saveMiniTrackerEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmMiniTrackerEnabled', enabledString);
+            GM_setValue('smMiniTrackerEnabled', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmMiniTrackerEnabled', enabledString);
+        localStorage.setItem('smMiniTrackerEnabled', enabledString);
 
         invalidateCache();
     } catch (error) {
@@ -253,13 +253,13 @@ export function getCollapseMinEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmCollapseMinEnabled', null);
+            const saved = GM_getValue('smCollapseMinEnabled', null);
             if (saved !== null) collapseMinEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (collapseMinEnabled === null) {
-            const saved = localStorage.getItem('bmCollapseMinEnabled');
+            const saved = localStorage.getItem('smCollapseMinEnabled');
             if (saved !== null) collapseMinEnabled = JSON.parse(saved);
         }
 
@@ -284,11 +284,11 @@ export function saveCollapseMinEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmCollapseMinEnabled', enabledString);
+            GM_setValue('smCollapseMinEnabled', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmCollapseMinEnabled', enabledString);
+        localStorage.setItem('smCollapseMinEnabled', enabledString);
 
         invalidateCache();
     } catch (error) {
@@ -302,7 +302,7 @@ export function saveCollapseMinEnabled(enabled) {
  */
 export function getMobileMode() {
     try {
-        const saved = localStorage.getItem('bmMobileMode');
+        const saved = localStorage.getItem('smMobileMode');
         if (saved !== null) {
             return JSON.parse(saved);
         }
@@ -318,7 +318,7 @@ export function getMobileMode() {
  */
 export function saveMobileMode(enabled) {
     try {
-        localStorage.setItem('bmMobileMode', JSON.stringify(enabled));
+        localStorage.setItem('smMobileMode', JSON.stringify(enabled));
         debugLog('Mobile mode setting saved:', enabled);
         invalidateCache();
     } catch (error) {
@@ -336,13 +336,13 @@ export function getTileRefreshPaused() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmTileRefreshPaused', null);
+            const saved = GM_getValue('smTileRefreshPaused', null);
             if (saved !== null) pausedState = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (pausedState === null) {
-            const saved = localStorage.getItem('bmTileRefreshPaused');
+            const saved = localStorage.getItem('smTileRefreshPaused');
             if (saved !== null) pausedState = JSON.parse(saved);
         }
 
@@ -369,11 +369,11 @@ export function saveTileRefreshPaused(paused) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmTileRefreshPaused', pausedString);
+            GM_setValue('smTileRefreshPaused', pausedString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmTileRefreshPaused', pausedString);
+        localStorage.setItem('smTileRefreshPaused', pausedString);
 
         debugLog('⏸️ Tile refresh pause setting saved:', paused);
         invalidateCache();
@@ -392,7 +392,7 @@ export function getSmartTileCacheEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmSmartTileCache', null);
+            const saved = GM_getValue('smSmartTileCache', null);
             if (saved !== null) {
                 cacheEnabled = JSON.parse(saved);
             }
@@ -400,7 +400,7 @@ export function getSmartTileCacheEnabled() {
 
         // Fallback to localStorage
         if (cacheEnabled === null) {
-            const saved = localStorage.getItem('bmSmartTileCache');
+            const saved = localStorage.getItem('smSmartTileCache');
             if (saved !== null) {
                 cacheEnabled = JSON.parse(saved);
             }
@@ -429,11 +429,11 @@ export function saveSmartTileCacheEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmSmartTileCache', enabledString);
+            GM_setValue('smSmartTileCache', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmSmartTileCache', enabledString);
+        localStorage.setItem('smSmartTileCache', enabledString);
 
         debugLog('🧠 Smart tile cache setting saved:', enabled);
         invalidateCache();
@@ -452,13 +452,13 @@ export function getSmartDetectionEnabled() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmSmartDetectionEnabled', null);
+            const saved = GM_getValue('smSmartDetectionEnabled', null);
             if (saved !== null) smartDetectionEnabled = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (smartDetectionEnabled === null) {
-            const saved = localStorage.getItem('bmSmartDetectionEnabled');
+            const saved = localStorage.getItem('smSmartDetectionEnabled');
             if (saved !== null) smartDetectionEnabled = JSON.parse(saved);
         }
 
@@ -485,11 +485,11 @@ export function saveSmartDetectionEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmSmartDetectionEnabled', enabledString);
+            GM_setValue('smSmartDetectionEnabled', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmSmartDetectionEnabled', enabledString);
+        localStorage.setItem('smSmartDetectionEnabled', enabledString);
 
         debugLog('Smart detection setting saved:', enabled);
         invalidateCache();
@@ -508,13 +508,13 @@ export function getNavigationMethod() {
 
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const saved = GM_getValue('bmNavigationMethod', null);
+            const saved = GM_getValue('smNavigationMethod', null);
             if (saved !== null) navigationMethod = JSON.parse(saved);
         }
 
         // Fallback to localStorage
         if (navigationMethod === null) {
-            const saved = localStorage.getItem('bmNavigationMethod');
+            const saved = localStorage.getItem('smNavigationMethod');
             if (saved !== null) navigationMethod = JSON.parse(saved);
         }
 
@@ -541,11 +541,11 @@ export function saveNavigationMethod(method) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmNavigationMethod', methodString);
+            GM_setValue('smNavigationMethod', methodString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmNavigationMethod', methodString);
+        localStorage.setItem('smNavigationMethod', methodString);
 
         debugLog('Navigation method setting saved:', method);
         invalidateCache();
@@ -562,14 +562,14 @@ export function getDragModeEnabled() {
     try {
         // Try TamperMonkey storage first
         if (typeof GM_getValue !== 'undefined') {
-            const tmValue = GM_getValue('bmDragMode', null);
+            const tmValue = GM_getValue('smDragMode', null);
             if (tmValue !== null) {
                 return JSON.parse(tmValue);
             }
         }
 
         // Fallback to localStorage
-        const localValue = localStorage.getItem('bmDragMode');
+        const localValue = localStorage.getItem('smDragMode');
         if (localValue !== null) {
             return JSON.parse(localValue);
         }
@@ -592,11 +592,11 @@ export function saveDragModeEnabled(enabled) {
 
         // Save to TamperMonkey storage
         if (typeof GM_setValue !== 'undefined') {
-            GM_setValue('bmDragMode', enabledString);
+            GM_setValue('smDragMode', enabledString);
         }
 
         // Also save to localStorage as backup
-        localStorage.setItem('bmDragMode', enabledString);
+        localStorage.setItem('smDragMode', enabledString);
 
         debugLog('Drag mode setting saved:', enabled);
         invalidateCache();
@@ -609,11 +609,11 @@ export function getTemplateColorSort() {
     try {
         // Prefer Tampermonkey
         if (typeof GM_getValue !== 'undefined') {
-            const v = GM_getValue('bmTemplateColorSort', null);
+            const v = GM_getValue('smTemplateColorSort', null);
             if (v !== null) return JSON.parse(v);
         }
         // Fallback + migration from any old key (if you used localStorage before)
-        const ls = localStorage.getItem('bmTemplateColorSort');
+        const ls = localStorage.getItem('smTemplateColorSort');
         if (ls !== null) return JSON.parse(ls);
     } catch {}
     return 'default';
@@ -623,8 +623,8 @@ export function getTemplateColorSort() {
 export function saveTemplateColorSort(sortValue) {
     try {
         const s = JSON.stringify(sortValue);
-        if (typeof GM_setValue !== 'undefined') GM_setValue('bmTemplateColorSort', s);
-        localStorage.setItem('bmTemplateColorSort', s); // backup
+        if (typeof GM_setValue !== 'undefined') GM_setValue('smTemplateColorSort', s);
+        localStorage.setItem('smTemplateColorSort', s); // backup
     } catch {}
 }
 
@@ -633,11 +633,11 @@ export function getCompactSort() {
     try {
         // Prefer Tampermonkey
         if (typeof GM_getValue !== 'undefined') {
-            const v = GM_getValue('bmcf-compact-sort', null);
+            const v = GM_getValue('smcf-compact-sort', null);
             if (v !== null) return JSON.parse(v);
         }
         // Fallback to old localStorage key
-        const ls = localStorage.getItem('bmcf-compact-sort');
+        const ls = localStorage.getItem('smcf-compact-sort');
         if (ls !== null) return ls; // old value was a plain string
     } catch {}
     return 'default';
@@ -646,7 +646,7 @@ export function getCompactSort() {
 /** Saves the Compact List sort */
 export function saveCompactSort(sortValue) {
     try {
-        if (typeof GM_setValue !== 'undefined') GM_setValue('bmcf-compact-sort', JSON.stringify(sortValue));
-        localStorage.setItem('bmcf-compact-sort', sortValue); // keep old key as backup
+        if (typeof GM_setValue !== 'undefined') GM_setValue('smcf-compact-sort', JSON.stringify(sortValue));
+        localStorage.setItem('smcf-compact-sort', sortValue); // keep old key as backup
     } catch {}
 }
