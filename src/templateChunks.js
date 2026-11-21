@@ -1,12 +1,11 @@
 /** Template chunks: the part of a template that lies inside one tile.
  *
- * A chunk holds the template's pixels at their real size (1x), as raw RGBA, not the 3x overlay that is drawn
- * on a tile. That is 9 times smaller in memory. The 3x overlay is built from it while a tile is processed
- * (see expandChunkTo3x in tilePixelOps.js).
+ * A chunk holds the template's pixels at their real size, as raw RGBA, not the 3x overlay that is drawn
+ * on a tile. The 3x overlay is built from it while a tile is processed (see expandChunkTo3x in tilePixelOps.js).
  *
  * The #deface color (222, 250, 206) is kept as it is. It is turned into a checkerboard when the overlay is built.
  *
- * Chunks are saved as PNG images of their 1x pixels (base64 encoded).
+ * Chunks are saved as PNG images (base64 encoded).
  * @since 2.0.0
  */
 

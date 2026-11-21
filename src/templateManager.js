@@ -1281,14 +1281,11 @@ export default class TemplateManager {
                     const displayName = templateValue.name || `Template ${sortID || ''}`; // Display name of the template
                     const coords = templateValue?.coords?.split(', ').map(Number); // "1, 2, 3, 4" -> [1, 2, 3, 4]
                     const tilesbase64 = templateValue.tiles;
-                    const templateTiles = {}; // Stores the template chunks (1x pixels) for each tile.
+                    const templateTiles = {}; // Stores the template chunks for each tile.
                     let totalPixelCount = 0; // Calculate total pixels across all tiles
 
                     // Decode the chunks in parallel for better performance
-                    const tilePromises = Object.entries(tilesbase64).map(async ([tile, encodedChunk]) => [
-                        tile,
-                        await decodeChunk(encodedChunk),
-                    ]);
+                    const tilePromises = Object.entries(tilesbase64).map(async ([tile, encodedChunk]) => [tile, await decodeChunk(encodedChunk)]);
 
                     const processedTiles = await Promise.all(tilePromises);
                     for (const [tile, chunk] of processedTiles) {

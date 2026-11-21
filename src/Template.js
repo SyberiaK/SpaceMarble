@@ -156,7 +156,7 @@ export default class Template {
 
                 const drawSizeX = Math.min(this.tileSize - (pixelX % this.tileSize), imageWidth - (pixelX - this.coords[2]));
 
-                // The chunk is kept at the template's real size (1x): one canvas pixel per template pixel
+                // The chunk is kept at the template's real size: one canvas pixel per template pixel
                 if (canvas.width !== drawSizeX || canvas.height !== drawSizeY) {
                     canvas.width = drawSizeX;
                     canvas.height = drawSizeY;

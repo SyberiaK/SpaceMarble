@@ -154,12 +154,12 @@ export function buildColorBreakdown(colorStats) {
     return colorBreakdown;
 }
 
-/** Expands a 1x template chunk into the 3x overlay that is drawn on a tile.
+/** Expands a template chunk into the 3x overlay that is drawn on a tile.
  * Every template pixel becomes the center pixel of a 3x3 cell and the rest of the cell stays transparent.
  * The #deface color (222, 250, 206) is drawn as a translucent black checkerboard over all nine pixels of its cell.
  * The checkerboard parity is relative to the chunk's own top left corner.
  * Must stay self-contained (see the note at the top of this file).
- * @param {Uint8ClampedArray} pixels - RGBA pixels of the 1x chunk
+ * @param {Uint8ClampedArray} pixels - RGBA pixels of the chunk
  * @param {number} width - Chunk width in template pixels
  * @param {number} height - Chunk height in template pixels
  * @param {Uint8ClampedArray} out - Zero-filled RGBA array of (width * 3) * (height * 3) pixels that receives the overlay

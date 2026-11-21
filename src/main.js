@@ -2692,9 +2692,7 @@ function showImportDialog(instance) {
             instance.handleDisplayStatus(`Imported templates from ${file.name}!`);
         } catch (e) {
             console.error(e);
-            instance.handleDisplayStatus(
-                e?.name === 'TemplateFormatError' ? e.message : 'Failed to import JSON - please check the file format',
-            );
+            instance.handleDisplayStatus(e?.name === 'TemplateFormatError' ? e.message : 'Failed to import JSON - please check the file format');
         }
     };
 
@@ -4997,7 +4995,7 @@ function buildOverlayMain() {
                                         maxY = 0;
                                     const tileSize = templateManager.tileSize || 1000;
                                     for (const key of tiles) {
-                                        // A chunk holds the template's pixels at their real size (1x)
+                                        // A chunk holds the template's pixels at their real size
                                         const chunk = t.chunked[key];
                                         const [tX, tY, pX, pY] = key.split(',').map(Number);
                                         const startX = tX * tileSize + pX;
