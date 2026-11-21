@@ -66,44 +66,43 @@ export function scanTemplateColors(data, width, height, mult, disabledInts, enha
 
 /** Counts required/painted/wrong/missing pixels of one template chunk against the server tile.
  * Pure function (no DOM access).
- * @param {Uint8ClampedArray} tData - Template chunk RGBA data
- * @param {number} tempW - Chunk width
- * @param {number} tempH - Chunk height
- * @param {number} offsetX - Chunk x offset inside the enlarged tile
- * @param {number} offsetY - Chunk y offset inside the enlarged tile
- * @param {Uint8ClampedArray} tilePixels - Server tile RGBA data at native resolution
+ * @param {Uint8ClampedArray} pixels - RGBA pixels of the template chunk
+ * @param {number} width - Chunk width in template pixels
+ * @param {number} height - Chunk height in template pixels
+ * @param {number} offsetX - Chunk x position inside the tile, in pixels
+ * @param {number} offsetY - Chunk y position inside the tile, in pixels
+ * @param {Uint8ClampedArray} tilePixels - Server tile RGBA data
  * @param {number} tileStride - Server tile width in pixels
- * @param {number} drawSize - Enlarged tile size in pixels
- * @param {number} mult - Enlarged pixel size (3)
  * @param {Map<number, Object>} colorStats - Per-color stats keyed by packed color (mutated)
  * @param {{required: number, painted: number, wrong: number}} totals - Running totals (mutated)
  */
-export function countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult, colorStats, totals) {
+export function countChunkPixels(pixels, width, height, offsetX, offsetY, tilePixels, tileStride, colorStats, totals) {
     let lastKey = -1;
     let lastEntry = null;
 
-    // Visit only the center pixel of each 3x3 block (x, y = 1, 4, 7, ...)
-    for (let y = 1; y < tempH; y += mult) {
-        const gy = y + offsetY;
-        if (gy < 0 || gy >= drawSize) continue;
-        const pixelY = (gy / mult) | 0; // gy >= 0 here; no `Math` lookup in the hot path
-        const tileRow = pixelY * tileStride;
+    for (let py = 0; py < height; py++) {
+        const tileY = py + offsetY;
+        if (tileY < 0) continue;
+        const tileRow = tileY * tileStride;
 
-        for (let x = 1; x < tempW; x += mult) {
-            const gx = x + offsetX;
-            if (gx < 0 || gx >= drawSize) continue;
+        for (let px = 0; px < width; px++) {
+            const tileX = px + offsetX;
+            if (tileX < 0 || tileX >= tileStride) continue;
 
-            const tIdx = (y * tempW + x) * 4;
+            const index = (py * width + px) * 4;
 
-            // Ignore transparent and semi-transparent (deface uses alpha 32)
-            if (tData[tIdx + 3] < 64) continue;
+            // Ignore transparent and semi-transparent
+            if (pixels[index + 3] < 64) continue;
 
-            const tr = tData[tIdx];
-            const tg = tData[tIdx + 1];
-            const tb = tData[tIdx + 2];
+            const tr = pixels[index];
+            const tg = pixels[index + 1];
+            const tb = pixels[index + 2];
 
             // Ignore #deface explicitly
             if (tr === 222 && tg === 250 && tb === 206) continue;
+
+            const tileIdx = (tileRow + tileX) * 4;
+            if (tileIdx + 3 >= tilePixels.length) continue;
 
             const key = (tr << 16) | (tg << 8) | tb;
             let entry;
@@ -128,20 +127,16 @@ export function countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixe
             entry.required++;
             totals.required++;
 
-            const pixelX = (gx / mult) | 0;
-            const tileIdx = (tileRow + pixelX) * 4;
-            const pa = tilePixels[tileIdx + 3];
-
-            if (pa < 64) {
+            if (tilePixels[tileIdx + 3] < 64) {
                 entry.missing++;
-                if (!entry.firstMissingPixel) entry.firstMissingPixel = [pixelX, pixelY];
+                if (!entry.firstMissingPixel) entry.firstMissingPixel = [tileX, tileY];
             } else if (tilePixels[tileIdx] === tr && tilePixels[tileIdx + 1] === tg && tilePixels[tileIdx + 2] === tb) {
                 totals.painted++;
                 entry.painted++;
             } else {
                 totals.wrong++;
                 entry.wrong++;
-                if (!entry.firstWrongPixel) entry.firstWrongPixel = [pixelX, pixelY];
+                if (!entry.firstWrongPixel) entry.firstWrongPixel = [tileX, tileY];
             }
         }
     }

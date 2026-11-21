@@ -2,14 +2,7 @@ import Template from './Template.js';
 import { numberToEncoded, debugLog } from './utils.js';
 import { clearFrozenTileCache } from './tileManager.js';
 import { packColorKey, buildColorBreakdown, mergeChunkStats } from './tilePixelOps.js';
-import {
-    scanTemplateColorsAsync,
-    countChunkPixelsAsync,
-    encodeCanvasAsync,
-    expandChunkAsync,
-    workersActive,
-    encodeActive,
-} from './tileWorkers.js';
+import { scanTemplateColorsAsync, countChunkPixelsAsync, encodeCanvasAsync, expandChunkAsync, workersActive, encodeActive } from './tileWorkers.js';
 import { decodeChunk, countOpaquePixels } from './templateChunks.js';
 import { EmptyStatusGate } from './emptyStatusGate.js';
 
@@ -996,30 +989,18 @@ export default class TemplateManager {
                 const totals = { required: 0, painted: 0, wrong: 0 };
 
                 for (const template of templatesToDraw) {
-                    // Count pixels using Storage fork logic (center pixels only)
-                    const tempW = template.bitmap.width;
-                    const tempH = template.bitmap.height;
-                    const tempCanvas = new OffscreenCanvas(tempW, tempH);
-                    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
-                    tempCtx.imageSmoothingEnabled = false;
-                    tempCtx.drawImage(template.bitmap, 0, 0);
-                    const tData = tempCtx.getImageData(0, 0, tempW, tempH).data;
-                    tempCanvas.width = tempCanvas.height = 0; // release memory instantly
-                    perfMark('count-read');
-
-                    const chunk = await countChunkPixelsAsync({
-                        tData,
-                        tempW,
-                        tempH,
-                        offsetX: Number(template.pixelCoords[0]) * this.drawMult,
-                        offsetY: Number(template.pixelCoords[1]) * this.drawMult,
+                    // Count from the chunk's own pixels: nothing has to be read back from the 3x overlay
+                    const counted = await countChunkPixelsAsync({
+                        pixels: template.chunk.pixels,
+                        width: template.chunk.width,
+                        height: template.chunk.height,
+                        offsetX: Number(template.pixelCoords[0]),
+                        offsetY: Number(template.pixelCoords[1]),
                         tilePixels,
                         tileStride,
-                        drawSize,
-                        mult: this.drawMult,
                     });
-                    mergeChunkStats(colorStats, totals, chunk.entries, chunk.totals);
-                    perfMark('count-loop');
+                    mergeChunkStats(colorStats, totals, counted.entries, counted.totals);
+                    perfMark('count');
                 }
 
                 requiredCount = totals.required;

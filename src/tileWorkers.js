@@ -62,19 +62,7 @@ function workerEntry(scanFn, countFn, expandFn) {
     const count = (a) => {
         const colorStats = new Map();
         const totals = { required: 0, painted: 0, wrong: 0 };
-        countFn(
-            new Uint8ClampedArray(a.tData),
-            a.tempW,
-            a.tempH,
-            a.offsetX,
-            a.offsetY,
-            a.tilePixels,
-            a.tileStride,
-            a.drawSize,
-            a.mult,
-            colorStats,
-            totals,
-        );
+        countFn(a.pixels, a.width, a.height, a.offsetX, a.offsetY, a.tilePixels, a.tileStride, colorStats, totals);
         return { result: { entries: Array.from(colorStats), totals } };
     };
 
@@ -94,6 +82,9 @@ function workerEntry(scanFn, countFn, expandFn) {
                 bitmap.close();
             }
             const blob = await canvas.convertToBlob({ type: 'image/png' });
+            // Encoding is done: release the canvas memory now, not whenever the worker next collects garbage
+            canvas.width = 0;
+            canvas.height = 0;
             return { result: { blob } };
         } catch (error) {
             // A consumed bitmap has width 0: take the pixels back out of the canvas instead
@@ -115,6 +106,8 @@ function workerEntry(scanFn, countFn, expandFn) {
         const out = new Uint8ClampedArray(a.width * 3 * a.height * 3 * 4);
         expandFn(a.pixels, a.width, a.height, out);
         const bitmap = await createImageBitmap(new ImageData(out, a.width * 3, a.height * 3));
+        // The bitmap has its own copy: free this 36 MB buffer now. An idle worker may not collect garbage for a long time
+        if (out.buffer.transfer) out.buffer.transfer();
         return { result: { bitmap }, transfer: [bitmap] };
     };
 
@@ -225,7 +218,9 @@ function selfTestInput() {
     const tilePixels = new Uint8ClampedArray([255, 0, 0, 255, 0, 0, 255, 255, 0, 0, 0, 0, 9, 9, 9, 255]);
     const red = (255 << 16) | (0 << 8) | 0;
     const green = (0 << 16) | (255 << 8) | 0;
-    return { data, width, height, mult, tilePixels, disabled: [green], enhanced: [red] };
+    // 2x2 template pixels for counting: red (painted), green (wrong, the tile has blue), #deface (ignored), blue (wrong, the tile has gray)
+    const chunk = { width: 2, height: 2, pixels: new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 255, 222, 250, 206, 255, 0, 0, 255, 255]) };
+    return { data, width, height, mult, tilePixels, chunk, disabled: [green], enhanced: [red] };
 }
 
 /** A fixed-size pool of tile workers. */
@@ -330,15 +325,13 @@ class TileWorkerPool {
                     slot,
                     'count',
                     {
-                        tData: input.data.slice().buffer,
-                        tempW: input.width,
-                        tempH: input.height,
+                        pixels: input.chunk.pixels,
+                        width: input.chunk.width,
+                        height: input.chunk.height,
                         offsetX: 0,
                         offsetY: 0,
                         tilePixels: input.tilePixels,
                         tileStride: 2,
-                        drawSize: 6,
-                        mult: input.mult,
                     },
                     [],
                 );
@@ -398,10 +391,7 @@ class TileWorkerPool {
         // 3x2 template pixels: opaque, #deface, transparent / opaque, #deface, translucent black
         const width = 3;
         const height = 2;
-        const pixels = new Uint8ClampedArray([
-            200, 10, 30, 255, 222, 250, 206, 255, 0, 0, 0, 0,
-            5, 90, 160, 255, 222, 250, 206, 255, 0, 0, 0, 77,
-        ]);
+        const pixels = new Uint8ClampedArray([200, 10, 30, 255, 222, 250, 206, 255, 0, 0, 0, 0, 5, 90, 160, 255, 222, 250, 206, 255, 0, 0, 0, 77]);
         const expected = new Uint8ClampedArray(width * 3 * height * 3 * 4);
         expandChunkTo3x(pixels, width, height, expected);
 
@@ -437,7 +427,7 @@ class TileWorkerPool {
     #mainThreadCount(input) {
         const colorStats = new Map();
         const totals = { required: 0, painted: 0, wrong: 0 };
-        countChunkPixels(input.data.slice(), input.width, input.height, 0, 0, input.tilePixels, 2, 6, input.mult, colorStats, totals);
+        countChunkPixels(input.chunk.pixels, input.chunk.width, input.chunk.height, 0, 0, input.tilePixels, 2, colorStats, totals);
         return JSON.stringify([Array.from(colorStats), totals]);
     }
 
@@ -613,30 +603,27 @@ export async function scanTemplateColorsAsync(job) {
 }
 
 /** Counts required/painted/wrong/missing pixels of one template chunk (see countChunkPixels).
- * The `tData` array passed in must not be used afterwards when workers are in use.
+ * The chunk's pixels are copied to the worker, not moved: the chunk stays intact.
  * @param {Object} job - Count job
- * @param {Uint8ClampedArray} job.tData - Template chunk RGBA data
- * @param {number} job.tempW - Chunk width
- * @param {number} job.tempH - Chunk height
- * @param {number} job.offsetX - Chunk x offset inside the enlarged tile
- * @param {number} job.offsetY - Chunk y offset inside the enlarged tile
- * @param {Uint8ClampedArray} job.tilePixels - Server tile RGBA data at native resolution (copied, not moved)
+ * @param {Uint8ClampedArray} job.pixels - RGBA pixels of the template chunk
+ * @param {number} job.width - Chunk width in template pixels
+ * @param {number} job.height - Chunk height in template pixels
+ * @param {number} job.offsetX - Chunk x position inside the tile, in pixels
+ * @param {number} job.offsetY - Chunk y position inside the tile, in pixels
+ * @param {Uint8ClampedArray} job.tilePixels - Server tile RGBA data (copied, not moved)
  * @param {number} job.tileStride - Server tile width in pixels
- * @param {number} job.drawSize - Enlarged tile size in pixels
- * @param {number} job.mult - Enlarged pixel size (3)
  * @returns {Promise<{entries: Array<[number, Object]>, totals: {required: number, painted: number, wrong: number}}>}
  */
 export async function countChunkPixelsAsync(job) {
-    const { tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult } = job;
+    const { pixels, width, height, offsetX, offsetY, tilePixels, tileStride } = job;
 
     if (workersReady()) {
-        const buffer = exactBuffer(tData);
-        return pool.run('count', { tData: buffer, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult }, [buffer]);
+        return pool.run('count', { pixels, width, height, offsetX, offsetY, tilePixels, tileStride }, []);
     }
 
     const colorStats = new Map();
     const totals = { required: 0, painted: 0, wrong: 0 };
-    countChunkPixels(tData, tempW, tempH, offsetX, offsetY, tilePixels, tileStride, drawSize, mult, colorStats, totals);
+    countChunkPixels(pixels, width, height, offsetX, offsetY, tilePixels, tileStride, colorStats, totals);
     return { entries: Array.from(colorStats), totals };
 }
 
@@ -680,7 +667,7 @@ export async function encodeCanvasAsync(canvas, onPrepared) {
 
 /** Builds the 3x overlay of a template chunk, as an ImageBitmap the caller has to close.
  * In a worker when possible: the chunk's pixels are copied, not moved, so the chunk stays intact.
- * @param {{width: number, height: number, pixels: Uint8ClampedArray}} chunk - The 1x template chunk
+ * @param {{width: number, height: number, pixels: Uint8ClampedArray}} chunk - The template chunk
  * @returns {Promise<ImageBitmap>} The overlay, (width * 3) x (height * 3) pixels
  */
 export async function expandChunkAsync(chunk) {
